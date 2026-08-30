@@ -201,9 +201,7 @@ function kehtivuseLopp(T) {
   return m ? `${m[6]}-${m[5]}-${m[4]}` : null;
 }
 
-// Riba index.html-i ulaossa: milline plaan, mis ajaga ja millal tehtud.
-// Ilma selleta ei saa vastuvotja aru, et tegu on hetketombega, mitte live-vaatega.
-// Genereerimise aeg Eesti ajas. Actionsis jookseb masin UTC peal,
+// Genereerimise aeg Eesti ajas. Masin voib joosta UTC peal,
 // aga lugeja loeb kellaaega kohalikus ajas.
 function uuendatud() {
   return new Date().toLocaleString('et-EE', {
@@ -213,6 +211,8 @@ function uuendatud() {
   });
 }
 
+// Riba index.html-i ulaossa: milline plaan, mis ajaga ja millal tehtud.
+// Ilma selleta ei saa vastuvotja aru, et tegu on hetketombega, mitte live-vaatega.
 function paiseRiba(kool, tp, lopp, kuupaev, aegunud) {
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const hoiatus = aegunud
