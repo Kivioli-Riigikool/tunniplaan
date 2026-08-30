@@ -15,8 +15,9 @@ Klient: Ingmar Jaska, Kiviõli Riigikool. Tehakse tasuta, sõbrale.
 | `edupage-generate.mjs` | Node'i skript, mis loeb EduPage'ist ja genereerib HTML-i. Kutsub välja `tunniplaan.html`-i enda funktsioone. |
 | `edupage-asendused.mjs` | Asenduste lugemine ja parsimine EduPage'ist. |
 | `timetable_synthetic.xml` | Testandmed. Päris XML-i koolil ei ole, vt allpool. |
-| `dist/` | Genereeritud väljund. Kustutatakse ja tehakse iga jooksuga uuesti. Gitis seda ei hoita. |
-| `.github/workflows/avalda.yml` | GitHub Actions: jooksutab generaatorit ja avaldab `dist/` GitHub Pagesisse. |
+| `dist/` | Genereeritud väljund. Kustutatakse ja tehakse iga jooksuga uuesti. Erandkorras gitis, sest Pages saab failid sealt. |
+| `avalda.sh` | Genereerib ja avaldab: üks käsk, mis teeb `dist/`, commitib ja push'ib. |
+| `.github/workflows/avalda.yml` | GitHub Actions: avaldab repos oleva `dist/` GitHub Pagesisse. Ei genereeri. |
 
 **Renderdust ei ole dubleeritud.** `edupage-generate.mjs` loeb `tunniplaan.html`-ist skriptiploki välja, käivitab selle DOM-i asendajatega ja kasutab sealt `buildTimetableHtml`, `buildIndexPage`, `wrapInHtmlPage`, `getExportCss` funktsioone. See tähendab, et vidina välimuse parandus kandub automaatselt ka genereeritud failidesse. Vastutasuks on `laeRenderdaja()` sõltuv sellest, et need funktsioonid oma nime ja kuju säilitavad.
 
@@ -37,32 +38,53 @@ Sõltuvusi ei ole, ainult Node. Võrgupäringud käivad `fetch`-iga.
 
 ## Avaldamine
 
-Leht elab GitHub Pagesis ja uueneb ise. Käsitsi ei pea midagi üles laadima.
+Leht elab GitHub Pagesis: **https://jubejuss.github.io/tunniplaan/**
 
 ```
-GitHub Actions -> node edupage-generate.mjs koik -> dist/ -> GitHub Pages
+kohalik masin -> node edupage-generate.mjs koik -> dist/ -> git push -> GitHub Pages
 ```
 
-`.github/workflows/avalda.yml` käivitub kolmel juhul:
+Uuendamiseks piisab ühest käsust:
 
-- **iga push `main` peale** – generaatori või `tunniplaan.html`-i muudatus jõuab kohe lehele
-- **ajakava järgi**, koolipäeviti iga 10 minuti tagant (cron `*/10 4-14 * * 1-5`, UTC) – see hoiab asendused värskena
-- **käsitsi**, Actions -> workflow -> Run workflow
+```bash
+./avalda.sh                # tänane kuupäev
+./avalda.sh 2026-09-15     # konkreetne päev, asenduste jaoks
+```
 
-Kui EduPage ei vasta, kukub jooks läbi ja **eelmine avaldatud versioon jääb lehele alles**. Katkist lehte ei teki.
+Skript genereerib, kontrollib kas `dist/` üldse muutus, ja alles siis commitib ja push'ib. `.github/workflows/avalda.yml` võtab push'i vastu ja avaldab `dist/` Pagesisse, umbes minutiga.
 
-### Aadress
+### Miks genereerimine ei käi GitHub Actionsis
 
-Praegu `https://jubejuss.github.io/tunniplaan/`. Juurleht (`dist/index.html`) on õppekoha valik, sealt edasi `viru/` ja `kivioli-tee-25/`.
+Nii see algselt oli, aga **EduPage ei võta GitHubi runneri IP-ga ühendust vastu.** Mõõdetud 30.08.2026 runneri pealt (Azure eastus2, IP 20.161.69.36):
+
+| Test | Tulemus |
+|---|---|
+| DNS `kivioli1keskkool.edupage.org` | vastab, 148.251.77.16 |
+| Muu internet (`api.ipify.org`) | vastab |
+| EduPage IPv4, port 443 | timeout 20 s |
+| EduPage IPv6, port 443 | ei ühendu |
+
+Ühendus sureb TCP tasemel, enne kui ükski HTTP-päring välja läheb. Päiste, User-Agenti ega päringu kujuga sellest mööda ei saa – EduPage'i server (Hetzner) lihtsalt ei vasta pilveteenuste aadressidele. Samad päringud töötavad kodusest masinast probleemideta.
+
+Seetõttu on `dist/` erandkorras gitis: repo on see koht, mille kaudu valmis failid Pagesisse jõuavad.
+
+**Automaatika võimalused, kui seda kunagi vaja läheb:**
+
+1. **Vahendaja** – Cloudflare Worker või muu proxy, mille IP EduPage'ini pääseb. Actions küsiks andmed selle kaudu. Tasuta, aga üks platvorm juurde.
+2. **Self-hosted runner** – GitHub Actions jookseb masinas, mis EduPage'ini pääseb (kooli server või väike VPS).
+3. **Kooli server** – kui see EduPage'ini pääseb, on generaatori õige koht hoopis seal. Vt `YLEVAADE.md` A2/A3.
+
+### Aadress ja oma domeen
+
+Juurleht (`dist/index.html`) on õppekoha valik, sealt edasi `viru/` ja `kivioli-tee-25/`.
 
 Oma domeen `tunniplaan.krk.edu.ee` eeldab, et EENet teeb DNS-i CNAME-kirje `tunniplaan.krk.edu.ee -> jubejuss.github.io`. Alles pärast seda saab GitHubis Settings -> Pages -> Custom domain täita ja Enforce HTTPS sisse lülitada.
 
 > **NB.** Kui repo kolib kunagi kooli konto või organisatsiooni alla, muutub ka CNAME sihtkoht. Tasub domeen tellida alles siis, kui konto on lõplik.
 
-### Kaks asja, mida meeles pidada
+### Aegunud plaan
 
-1. **Aegunud plaan läheb ka lehele.** Generaator hoiatab konsoolis, aga ei peata avaldamist. Aegunud plaani puhul on nii juurlehel kui õppekoha lehel punase äärega hoiatuskast. Kooli kodulehelt tasub sinna linkida alles siis, kui uus plaan on EduPage'is olemas.
-2. **GitHub peatab ajakava, kui repos 60 päeva midagi ei toimu.** Teade tuleb e-postiga, taastamiseks piisab ühest push'ist või käsitsi käivitusest.
+Generaator hoiatab konsoolis, aga ei peata avaldamist. Aegunud plaani puhul on nii juurlehel kui õppekoha lehel punase äärega hoiatuskast. **Kooli kodulehelt tasub sinna linkida alles siis, kui uus plaan on EduPage'is olemas.**
 
 ---
 
@@ -228,7 +250,7 @@ Praktiline järeldus: praegu sobib see Ingmarile näitamiseks ja uue plaani peal
 - Asendused ainult klassilehtedel. Õpetaja ja ruumi vaadete jaoks on vaja `mode=teachers` ja `mode=classrooms` päringuid. Parser ise töötab.
 - Genereeritakse ühe päeva seis. Otsustamata, kas näidata ka homset või kogu nädalat.
 - Paarid tuletatakse mehaaniliselt, mitte `durationperiods` järgi. See tähendab, et topelttunni silti näeb ka klass, kellel seal topelttundi ei ole.
-- Avaldamine käib GitHub Pagesisse iga 10 min tagant, aga muutust ei tuvastata: avaldatakse iga kord uuesti, ka siis, kui midagi ei muutunud.
+- Ajastamine puudub. Genereerimine kaib kasitsi (`./avalda.sh`), sest EduPage ei vasta GitHubi runnerile. Vt "Avaldamine".
 - Kooli koduleht: kui failid peaks kunagi kooli enda serverisse minema, tuleb `avalda.yml`-i lõppu lisada rsync/SFTP samm. Vt `YLEVAADE.md` A-lahendus.
 - Õpetajavaates on kellaajad mitmetimõistetavad, kui klassidel peaksid kunagi erinevad ajad tulema. Praegu on kõik ühe skeemi peal.
 

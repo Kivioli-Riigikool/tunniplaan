@@ -48,13 +48,13 @@ Punktid 2 ja 3 on II osa teema.
 
 ## Kus see praegu elab
 
-**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/jubejuss/tunniplaan`, leht `https://jubejuss.github.io/tunniplaan/`. Generaator jookseb GitHub Actionsis ajakava järgi, käsitsi ei pea midagi tegema.
+**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/jubejuss/tunniplaan`, leht `https://jubejuss.github.io/tunniplaan/`. Genereerimine käib esialgu kohalikust masinast (`./avalda.sh`), sest EduPage ei vasta GitHubi runnerile – vt allpool.
 
 | Osa | Kus | Kelle oma |
 |---|---|---|
 | Andmed (tunniplaan, asendused) | `kivioli1keskkool.edupage.org`, `kiviol1keskkool.edupage.org` | Kool / aSc |
-| Generaator | GitHub Actions, `.github/workflows/avalda.yml` | Repo omanik |
-| Valmis HTML | GitHub Pages | Repo omanik |
+| Generaator | Kohalik masin, `./avalda.sh` | Enda |
+| Valmis HTML | GitHub Pages, repo `dist/` kaudu | Repo omanik |
 
 Repo on esialgu isikliku konto all. Kui kool tahab omanikuks saada, tuleb repo üle kanda ja DNS-i CNAME uuesti tellida – vt allpool.
 
@@ -159,9 +159,24 @@ võidaks.
 
 ### Mis on tehtud
 
-- `.github/workflows/avalda.yml` – genereerib ja avaldab. Käivitub push'i peale, koolipäeviti iga 10 min ja käsitsi.
 - `dist/index.html` – saidi juurleht, valik kahe õppekoha vahel. Genereeritakse koos ülejäänuga.
+- `avalda.sh` – üks käsk: genereerib, kontrollib kas midagi muutus, commitib ja push'ib.
+- `.github/workflows/avalda.yml` – võtab push'i vastu ja avaldab `dist/` Pagesisse.
 - Aegunud plaani puhul on lehel punase äärega hoiatuskast. Avaldamist see ei peata.
+
+### Jooksutaja küsimus jäi lahtiseks
+
+Alguses pidi generaator jooksma GitHub Actionsis. **See ei tööta: EduPage ei võta GitHubi runneri IP-ga ühendust vastu.** Mõõdetud 30.08.2026 – DNS lahendub, muu internet toimib, aga port 443 EduPage'i pihta läheb timeouti nii IPv4 kui IPv6 peal. Blokk on TCP tasemel, seega päiste ega päringu kujuga sellest mööda ei saa.
+
+Hostija (GitHub Pages) on seega paigas, jooksutaja on endiselt kohalik masin. Kolm teed edasi, kui automaatikat päriselt vaja läheb:
+
+| Tee | Maksumus | Mida vaja |
+|---|---|---|
+| Vahendaja (Cloudflare Worker) | tasuta | Cloudflare'i konto, ~30 rida koodi. Enne testida, kas Cloudflare'i IP pääseb EduPage'ini. |
+| Self-hosted runner | 3-5 €/kuu | VPS, mis on pidevalt üleval |
+| Kooli server | 0 | Kooli IT nõusolek, vt A2/A3 |
+
+Kuni kool ei ole uut õppeaastat EduPage'i pannud, ei ole automaatikal niikuinii midagi teha.
 
 ### Mis on veel tegemata
 
