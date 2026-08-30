@@ -91,7 +91,7 @@ npx wrangler deploy
 npx wrangler secret put VOTI      # sama vaartus, mis GitHubi secret EDUPAGE_VOTI
 ```
 
-GitHubis on kaks secretit: `EDUPAGE_VAHENDAJA` (Workeri aadress) ja `EDUPAGE_VOTI`. Kui `EDUPAGE_VAHENDAJA` on seadmata, läheb päring otse – nii käitub kohalik masin.
+GitHubis on kaks secretit: `EDUPAGE_VAHENDAJA` (Workeri aadress) ja `EDUPAGE_VOTI`. Võtit ennast kuskil loetaval kujul ei hoita – kui see kaob, genereeri uus ja pane mõlemasse kohta (Workeri secret ja GitHubi secret). Kui `EDUPAGE_VAHENDAJA` on seadmata, läheb päring otse – nii käitub kohalik masin.
 
 Kui vahendajat kunagi vaja ei ole (nt generaator kolib kooli serverisse), piisab secreti eemaldamisest ja Workeri kustutamisest. Koodi muuta ei ole vaja.
 
