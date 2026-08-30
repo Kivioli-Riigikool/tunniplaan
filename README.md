@@ -15,9 +15,9 @@ Klient: Ingmar Jaska, Kiviõli Riigikool. Tehakse tasuta, sõbrale.
 | `edupage-generate.mjs` | Node'i skript, mis loeb EduPage'ist ja genereerib HTML-i. Kutsub välja `tunniplaan.html`-i enda funktsioone. |
 | `edupage-asendused.mjs` | Asenduste lugemine ja parsimine EduPage'ist. |
 | `timetable_synthetic.xml` | Testandmed. Päris XML-i koolil ei ole, vt allpool. |
-| `dist/` | Genereeritud väljund. Kustutatakse ja tehakse iga jooksuga uuesti. Erandkorras gitis, sest Pages saab failid sealt. |
-| `avalda.sh` | Genereerib ja avaldab: üks käsk, mis teeb `dist/`, commitib ja push'ib. |
-| `.github/workflows/avalda.yml` | GitHub Actions: avaldab repos oleva `dist/` GitHub Pagesisse. Ei genereeri. |
+| `dist/` | Genereeritud väljund. Kustutatakse ja tehakse iga jooksuga uuesti. Gitis seda ei hoita. |
+| `vahendaja/` | Cloudflare Worker, mille kaudu Actions EduPage'ini pääseb. |
+| `.github/workflows/avalda.yml` | GitHub Actions: genereerib ja avaldab GitHub Pagesisse. |
 
 **Renderdust ei ole dubleeritud.** `edupage-generate.mjs` loeb `tunniplaan.html`-ist skriptiploki välja, käivitab selle DOM-i asendajatega ja kasutab sealt `buildTimetableHtml`, `buildIndexPage`, `wrapInHtmlPage`, `getExportCss` funktsioone. See tähendab, et vidina välimuse parandus kandub automaatselt ka genereeritud failidesse. Vastutasuks on `laeRenderdaja()` sõltuv sellest, et need funktsioonid oma nime ja kuju säilitavad.
 
@@ -38,24 +38,26 @@ Sõltuvusi ei ole, ainult Node. Võrgupäringud käivad `fetch`-iga.
 
 ## Avaldamine
 
-Leht elab GitHub Pagesis: **https://jubejuss.github.io/tunniplaan/**
+Leht elab GitHub Pagesis ja uueneb ise: **https://jubejuss.github.io/tunniplaan/**
 
 ```
-kohalik masin -> node edupage-generate.mjs koik -> dist/ -> git push -> GitHub Pages
+GitHub Actions -> Cloudflare Worker -> EduPage
+              -> node edupage-generate.mjs koik -> dist/ -> GitHub Pages
 ```
 
-Uuendamiseks piisab ühest käsust:
+`.github/workflows/avalda.yml` käivitub kolmel juhul:
 
-```bash
-./avalda.sh                # tänane kuupäev
-./avalda.sh 2026-09-15     # konkreetne päev, asenduste jaoks
-```
+- **iga push `main` peale** – generaatori või `tunniplaan.html`-i muudatus jõuab kohe lehele
+- **ajakava järgi**, koolipäeviti iga 10 minuti tagant (cron `*/10 4-14 * * 1-5`, UTC) – see hoiab asendused värskena
+- **käsitsi**: `gh workflow run avalda.yml` või Actions -> workflow -> Run workflow
 
-Skript genereerib, kontrollib kas `dist/` üldse muutus, ja alles siis commitib ja push'ib. `.github/workflows/avalda.yml` võtab push'i vastu ja avaldab `dist/` Pagesisse, umbes minutiga.
+Kui EduPage või vahendaja ei vasta, kukub jooks läbi ja **eelmine avaldatud versioon jääb lehele alles**. Katkist lehte ei teki.
 
-### Miks genereerimine ei käi GitHub Actionsis
+Kohapeal vaatamiseks piisab `node edupage-generate.mjs koik` – kohalikust masinast käivad päringud otse, vahendajat vaja ei ole.
 
-Nii see algselt oli, aga **EduPage ei võta GitHubi runneri IP-ga ühendust vastu.** Mõõdetud 30.08.2026 runneri pealt (Azure eastus2, IP 20.161.69.36):
+### Miks vahendaja
+
+**EduPage ei võta GitHubi runneri IP-ga ühendust vastu.** Mõõdetud 30.08.2026 runneri pealt (Azure eastus2, IP 20.161.69.36):
 
 | Test | Tulemus |
 |---|---|
@@ -64,15 +66,34 @@ Nii see algselt oli, aga **EduPage ei võta GitHubi runneri IP-ga ühendust vast
 | EduPage IPv4, port 443 | timeout 20 s |
 | EduPage IPv6, port 443 | ei ühendu |
 
-Ühendus sureb TCP tasemel, enne kui ükski HTTP-päring välja läheb. Päiste, User-Agenti ega päringu kujuga sellest mööda ei saa – EduPage'i server (Hetzner) lihtsalt ei vasta pilveteenuste aadressidele. Samad päringud töötavad kodusest masinast probleemideta.
+Ühendus sureb TCP tasemel, enne kui ükski HTTP-päring välja läheb. Päiste, User-Agenti ega päringu kujuga sellest mööda ei saa. Cloudflare'i võrgust sama päring töötab, seega käivad päringud sealtkaudu.
 
-Seetõttu on `dist/` erandkorras gitis: repo on see koht, mille kaudu valmis failid Pagesisse jõuavad.
+GitHubi aadressiruumi avamist küsida ei ole mõtet: Actionsi IP-nimekirjas on 5625 IPv4-vahemikku, üle 28 miljoni aadressi, ja see muutub.
 
-**Automaatika võimalused, kui seda kunagi vaja läheb:**
+### Vahendaja
 
-1. **Vahendaja** – Cloudflare Worker või muu proxy, mille IP EduPage'ini pääseb. Actions küsiks andmed selle kaudu. Tasuta, aga üks platvorm juurde.
-2. **Self-hosted runner** – GitHub Actions jookseb masinas, mis EduPage'ini pääseb (kooli server või väike VPS).
-3. **Kooli server** – kui see EduPage'ini pääseb, on generaatori õige koht hoopis seal. Vt `YLEVAADE.md` A2/A3.
+`vahendaja/` all on Cloudflare Worker, aadressil `https://tunniplaan-vahendaja.jubejuss.workers.dev`.
+
+See ei ole üldine proxy:
+
+| Piir | Miks |
+|---|---|
+| Ainult POST | Muud generaator ei kasuta |
+| Ainult kaks EduPage'i hosti | Muidu on see lahtine proxy kogu internetile |
+| Ainult teed `/timetable/server/` ja `/substitution/server/` | Sama põhjus |
+| Võti päises `x-tunniplaan-voti` | Ilma selleta ei vastata. Kui võti on Workeris seadmata, keeldub see üldse töötamast |
+
+Deploy ja võti:
+
+```bash
+cd vahendaja
+npx wrangler deploy
+npx wrangler secret put VOTI      # sama vaartus, mis GitHubi secret EDUPAGE_VOTI
+```
+
+GitHubis on kaks secretit: `EDUPAGE_VAHENDAJA` (Workeri aadress) ja `EDUPAGE_VOTI`. Kui `EDUPAGE_VAHENDAJA` on seadmata, läheb päring otse – nii käitub kohalik masin.
+
+Kui vahendajat kunagi vaja ei ole (nt generaator kolib kooli serverisse), piisab secreti eemaldamisest ja Workeri kustutamisest. Koodi muuta ei ole vaja.
 
 ### Aadress ja oma domeen
 
@@ -85,6 +106,10 @@ Oma domeen `tunniplaan.krk.edu.ee` eeldab, et EENet teeb DNS-i CNAME-kirje `tunn
 ### Aegunud plaan
 
 Generaator hoiatab konsoolis, aga ei peata avaldamist. Aegunud plaani puhul on nii juurlehel kui õppekoha lehel punase äärega hoiatuskast. **Kooli kodulehelt tasub sinna linkida alles siis, kui uus plaan on EduPage'is olemas.**
+
+### Kui GitHub ajakava seiskab
+
+Repos, kus 60 päeva midagi ei toimu, lülitab GitHub `schedule`-käivituse välja ja saadab sellest kirja. Taastamiseks piisab ühest push'ist või käsitsi käivitusest.
 
 ---
 
@@ -250,7 +275,7 @@ Praktiline järeldus: praegu sobib see Ingmarile näitamiseks ja uue plaani peal
 - Asendused ainult klassilehtedel. Õpetaja ja ruumi vaadete jaoks on vaja `mode=teachers` ja `mode=classrooms` päringuid. Parser ise töötab.
 - Genereeritakse ühe päeva seis. Otsustamata, kas näidata ka homset või kogu nädalat.
 - Paarid tuletatakse mehaaniliselt, mitte `durationperiods` järgi. See tähendab, et topelttunni silti näeb ka klass, kellel seal topelttundi ei ole.
-- Ajastamine puudub. Genereerimine kaib kasitsi (`./avalda.sh`), sest EduPage ei vasta GitHubi runnerile. Vt "Avaldamine".
+- Avaldatakse iga 10 min tagant uuesti, ka siis kui midagi ei muutunud. Muutuse tuvastamist ei ole.
 - Kooli koduleht: kui failid peaks kunagi kooli enda serverisse minema, tuleb `avalda.yml`-i lõppu lisada rsync/SFTP samm. Vt `YLEVAADE.md` A-lahendus.
 - Õpetajavaates on kellaajad mitmetimõistetavad, kui klassidel peaksid kunagi erinevad ajad tulema. Praegu on kõik ühe skeemi peal.
 

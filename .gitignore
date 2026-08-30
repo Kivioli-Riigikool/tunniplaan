@@ -1,10 +1,15 @@
-# dist/ ON gitis. Tavaliselt genereeritud valjundit ei hoita, aga
-# siin genereeritakse kohalikus masinas (EduPage blokib GitHubi
-# runneri IP-d), seega on repo see koht, mille kaudu failid Pagesisse
-# jouavad. Vt README, peatukk "Avaldamine".
+# Genereeritud valjund. Tehakse iga jooksuga nullist uuesti,
+# GitHub Actions genereerib selle enne avaldamist.
+dist/
 
 # Kasitsi tehtud tommised
 *.zip
 
 .DS_Store
 node_modules/
+
+# Wrangleri kohalik vahemalu, sisaldab konto ID-d
+.wrangler/
+
+# Kooli IT-le saadetav kirjamustand, mitte koodi osa
+KIRI-KOOLI-IT.md

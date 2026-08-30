@@ -1,21 +1,22 @@
-name: Avalda tunniplaan
+name: Genereeri ja avalda tunniplaan
 
-# Genereerimine kaib kohalikus masinas, mitte siin.
-#
-# EduPage ei vota GitHubi runneri (Azure) IP-ga uhendust vastu: DNS
-# lahendub, muu internet toimib, aga port 443 EduPage'i pihta laheb
-# timeouti nii IPv4 kui IPv6 peal. Blokk on TCP tasemel, seega paise
-# ega paringu kujuga seda mooda ei saa.
-#
-# Seetottu on dist/ gitis ja see workflow ainult avaldab selle.
-# Uuendamine: ./avalda.sh
+# EduPage ei vota GitHubi runneri IP-ga uhendust vastu: port 443
+# laheb timeouti nii IPv4 kui IPv6 peal. Seetottu ei kai paringud
+# siit otse, vaid Cloudflare Workeri kaudu, mille IP-le EduPage
+# vastab. Vahendaja kood on vahendaja/ all.
 
 on:
+  # Generaatori voi tunniplaan.html-i muudatus laheb kohe lehele.
   push:
     branches: [main]
-    paths:
-      - 'dist/**'
-      - '.github/workflows/avalda.yml'
+
+  # Asenduste parast. Cron on UTC, Eesti on suvel UTC+3 ja talvel
+  # UTC+2, seega 4-14 UTC katab koolipaeva u 06:00-17:00 kohalikku
+  # aega. Iga 10 min teeb 6 avaldamist tunnis, Pagesi piir on ~10.
+  schedule:
+    - cron: '*/10 4-14 * * 1-5'
+
+  # Kasitsi: Actions -> see workflow -> Run workflow.
   workflow_dispatch:
 
 permissions:
@@ -23,18 +24,29 @@ permissions:
   pages: write
   id-token: write
 
+# Uks avaldamine korraga, pooleliolevat ei katkestata.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  avalda:
+  genereeri:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Soltuvusi ei ole, npm installi ei ole vaja. Kui EduPage voi
+      # vahendaja ei vasta, kukub siin labi ja eelmine avaldatud
+      # versioon jaab lehel alles.
+      - name: Genereeri HTML EduPage'ist
+        env:
+          EDUPAGE_VAHENDAJA: ${{ secrets.EDUPAGE_VAHENDAJA }}
+          EDUPAGE_VOTI: ${{ secrets.EDUPAGE_VOTI }}
+        run: node edupage-generate.mjs koik
 
       - uses: actions/configure-pages@v5
 
@@ -42,5 +54,12 @@ jobs:
         with:
           path: dist
 
+  avalda:
+    needs: genereeri
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4

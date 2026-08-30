@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tunniplaan-vahendaja",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-30",
+  "observability": {
+    "enabled": true
+  }
+  // Voti seatakse eraldi, mitte siia:
+  //   npx wrangler secret put VOTI
+}

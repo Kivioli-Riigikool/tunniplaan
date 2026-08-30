@@ -48,13 +48,13 @@ Punktid 2 ja 3 on II osa teema.
 
 ## Kus see praegu elab
 
-**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/jubejuss/tunniplaan`, leht `https://jubejuss.github.io/tunniplaan/`. Genereerimine käib esialgu kohalikust masinast (`./avalda.sh`), sest EduPage ei vasta GitHubi runnerile – vt allpool.
+**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/jubejuss/tunniplaan`, leht `https://jubejuss.github.io/tunniplaan/`. Generaator jookseb GitHub Actionsis koolipäeviti iga 10 min tagant, EduPage'ini pääseb Cloudflare Workeri kaudu. Käsitsi ei pea midagi tegema.
 
 | Osa | Kus | Kelle oma |
 |---|---|---|
 | Andmed (tunniplaan, asendused) | `kivioli1keskkool.edupage.org`, `kiviol1keskkool.edupage.org` | Kool / aSc |
-| Generaator | Kohalik masin, `./avalda.sh` | Enda |
-| Valmis HTML | GitHub Pages, repo `dist/` kaudu | Repo omanik |
+| Generaator | GitHub Actions, Cloudflare Workeri kaudu | Repo omanik |
+| Valmis HTML | GitHub Pages | Repo omanik |
 
 Repo on esialgu isikliku konto all. Kui kool tahab omanikuks saada, tuleb repo üle kanda ja DNS-i CNAME uuesti tellida – vt allpool.
 
@@ -160,29 +160,19 @@ võidaks.
 ### Mis on tehtud
 
 - `dist/index.html` – saidi juurleht, valik kahe õppekoha vahel. Genereeritakse koos ülejäänuga.
-- `avalda.sh` – üks käsk: genereerib, kontrollib kas midagi muutus, commitib ja push'ib.
-- `.github/workflows/avalda.yml` – võtab push'i vastu ja avaldab `dist/` Pagesisse.
+- `.github/workflows/avalda.yml` – genereerib ja avaldab. Push'i peale, koolipäeviti iga 10 min ja käsitsi.
+- `vahendaja/` – Cloudflare Worker, ilma milleta Actions EduPage'ini ei pääse.
 - Aegunud plaani puhul on lehel punase äärega hoiatuskast. Avaldamist see ei peata.
 
-### Jooksutaja küsimus jäi lahtiseks
+### Jooksutaja: miks vahendaja vahel on
 
-Alguses pidi generaator jooksma GitHub Actionsis. **See ei tööta: EduPage ei võta GitHubi runneri IP-ga ühendust vastu.** Mõõdetud 30.08.2026 – DNS lahendub, muu internet toimib, aga port 443 EduPage'i pihta läheb timeouti nii IPv4 kui IPv6 peal. Blokk on TCP tasemel, seega päiste ega päringu kujuga sellest mööda ei saa.
+Algne plaan oli, et Actions küsib EduPage'ilt otse. **See ei tööta: EduPage ei võta GitHubi runneri IP-ga ühendust vastu.** Mõõdetud 30.08.2026 – DNS lahendub, muu internet toimib, aga port 443 EduPage'i pihta läheb timeouti nii IPv4 kui IPv6 peal. Blokk on TCP tasemel.
 
-Hostija (GitHub Pages) on seega paigas, jooksutaja on endiselt kohalik masin. Kolm teed edasi, kui automaatikat päriselt vaja läheb:
+GitHubi aadressiruumi avamist küsida ei ole mõtet: Actionsi IP-nimekirjas on 5625 IPv4-vahemikku, üle 28 miljoni aadressi, ja see nimekiri muutub.
 
-| Tee | Maksumus | Mida vaja |
-|---|---|---|
-| Vahendaja (Cloudflare Worker) | tasuta | Cloudflare'i konto, ~30 rida koodi. Enne testida, kas Cloudflare'i IP pääseb EduPage'ini. |
-| Self-hosted runner | 3-5 €/kuu | VPS, mis on pidevalt üleval |
-| Kooli server | 0 | Kooli IT nõusolek, vt A2/A3 |
+Cloudflare'i võrgust sama päring töötab. Seega on vahel Worker, mis päringu edasi annab: lubatud on kaks hosti, kaks teed ja POST, ning ilma võtmeta ei vastata midagi. Ülalpidamiskulu null, Cloudflare'i tasuta pakett katab selle mitmekordselt.
 
-Kuni kool ei ole uut õppeaastat EduPage'i pannud, ei ole automaatikal niikuinii midagi teha.
-
-### Mis on veel tegemata
-
-1. **DNS.** `tunniplaan.krk.edu.ee` CNAME -> `jubejuss.github.io`, tellida EENetist (`hostmaster@eenet.ee`). Alles pärast seda saab GitHubis Custom domain'i ja Enforce HTTPS'i sisse lülitada.
-2. **Uus õppeaasta.** Kuni EduPage'is on ainult eelmise aasta plaan, ei tasu kooli kodulehelt sinna linkida.
-3. **Omandiküsimus.** Kui repo läheb kooli kontole, tuleb DNS uuesti seadistada. Otsustada enne domeeni tellimist.
+**Mida see juurde toob:** ühe konto ja ühe komponendi, mis võib katki minna. Kui Worker sureb, kukub jooks läbi ja vana leht jääb alles – vaikset valeandmete avaldamist ei teki. Kui generaator kunagi kooli serverisse kolib, kaob vahendaja vajadus ära: piisab GitHubi secreti eemaldamisest, koodi muuta ei ole vaja.
 
 Kui A-lahendus (kooli koduleht) hiljem siiski avaneb, jääb kogu see töö alles: A on lihtsalt üks lisasamm `avalda.yml`-i lõpus, mis lükkab sama `dist/` rsync'iga kooli serverisse.
 
