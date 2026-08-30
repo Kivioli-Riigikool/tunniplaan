@@ -14,6 +14,7 @@ import { readFileSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { laeAsendused } from './edupage-asendused.mjs';
+import { edupagePost } from './edupage-fetch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -41,15 +42,8 @@ const DOUBLE_MIN = process.env.TOPELT !== undefined ? Number(process.env.TOPELT)
 // EduPage
 // ---------------------------------------------------------------
 
-async function edupage(host, path, args) {
-  const res = await fetch(`https://${host}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ __args: args, __gsh: '00000000' }),
-  });
-  if (!res.ok) throw new Error(`${host}${path} vastas ${res.status}`);
-  return res.json();
-}
+// Paringu tegemine, koos korduskatsetega, elab edupage-fetch.mjs-is.
+const edupage = edupagePost;
 
 // Leiab praegu kehtiva tunniplaani. NB! EduPage ei tagasta neid
 // kuupaeva jarjekorras, seega massiivi viimane element ei ole uusim.
@@ -434,5 +428,7 @@ const kuupaev = process.argv[3] || new Date().toISOString().slice(0, 10);
 const votmed = arg === 'koik' ? Object.keys(KOOLID) : [arg];
 genereeri(votmed, kuupaev).catch(err => {
   console.error('VIGA:', err.message);
+  // fetchi vead peidavad tegeliku pohjuse cause alla.
+  if (err.cause) console.error('  põhjus:', err.cause.code || err.cause.message || err.cause);
   process.exit(1);
 });

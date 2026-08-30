@@ -4,6 +4,8 @@
 // iga rea CSS-klass utleb muudatuse tuubi, nii et eestikeelset vaba teksti
 // ei ole vaja tolgendada. Teksti kasutame ainult kuvamiseks.
 
+import { edupagePost } from './edupage-fetch.mjs';
+
 const TUUBID = {
   change: { silt: 'Asendus', margis: '!', klass: 'subst-change' },
   remove: { silt: 'Jääb ära', margis: '×', klass: 'subst-remove' },
@@ -74,13 +76,11 @@ export function parsiAsendused(html) {
 }
 
 export async function laeAsendused(host, kuupaev, mode = 'classes') {
-  const res = await fetch(`https://${host}/substitution/server/viewer.js?__func=getSubstViewerDayDataHtml`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ __args: [null, { date: kuupaev, mode }], __gsh: '00000000' }),
-  });
-  if (!res.ok) throw new Error(`asenduste päring vastas ${res.status}`);
-  const d = await res.json();
+  const d = await edupagePost(
+    host,
+    '/substitution/server/viewer.js?__func=getSubstViewerDayDataHtml',
+    [null, { date: kuupaev, mode }]
+  );
   if (typeof d?.r !== 'string') throw new Error('asenduste vastus ei olnud oodatud kujul');
   return parsiAsendused(d.r);
 }
