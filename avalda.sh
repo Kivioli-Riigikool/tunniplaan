@@ -16,8 +16,18 @@ KUUPAEV="${1:-$(date +%F)}"
 echo "==> Genereerin ($KUUPAEV)"
 node edupage-generate.mjs koik "$KUUPAEV"
 
-if git diff --quiet -- dist && git diff --cached --quiet -- dist; then
-  echo "==> dist/ ei muutunud, ei avalda"
+# Iga jooks kirjutab lehele uue "Leht uuendatud" aja, seega failid
+# erinevad alati. Sisulise muudatuse tuvastamiseks jatame just need
+# read korvale.
+SISULINE=$(git diff -U0 -- dist \
+  | grep -E '^[+-]' \
+  | grep -Ev '^(\+\+\+|---)' \
+  | grep -v 'Leht uuendatud' \
+  | head -1 || true)
+
+if [ -z "$SISULINE" ]; then
+  echo "==> Tunniplaan ega asendused ei muutunud, ei avalda"
+  git checkout -- dist
   exit 0
 fi
 
