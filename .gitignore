@@ -1,0 +1,9 @@
+# Genereeritud valjund. Tehakse iga jooksuga nullist uuesti,
+# GitHub Actions genereerib selle enne avaldamist.
+dist/
+
+# Kasitsi tehtud tommised
+*.zip
+
+.DS_Store
+node_modules/

@@ -1,0 +1,58 @@
+name: Genereeri ja avalda tunniplaan
+
+on:
+  # Iga muudatus generaatoris voi vidina kujunduses laheb kohe lehele.
+  push:
+    branches: [main]
+
+  # Asenduste parast. Cron on UTC, Eesti on suvel UTC+3 ja talvel UTC+2,
+  # seega 4-14 UTC katab koolipaeva u 06:00-17:00 kohalikku aega.
+  # Iga 10 min teeb 6 avaldamist tunnis, GitHub Pagesi piir on ~10.
+  schedule:
+    - cron: '*/10 4-14 * * 1-5'
+
+  # Kasitsi kaivitamiseks: Actions -> see workflow -> Run workflow.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uks avaldamine korraga. Pooleliolevat ei katkestata, muidu voib
+# leht jaada poolikuks.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  genereeri:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Soltuvusi ei ole, npm install't ei ole vaja.
+      # Kui EduPage ei vasta, kukub siin labi ja eelmine
+      # avaldatud versioon jaab lehel alles.
+      - name: Genereeri HTML EduPage'ist
+        run: node edupage-generate.mjs koik
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  avalda:
+    needs: genereeri
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tunniplaan – prototüüp</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --color-border: #d4d4d4;
+    --color-border-strong: #999;
+    --color-bg: #ffffff;
+    --color-bg-alt: #f7f7f5;
+    --color-bg-header: #f0efe9;
+    --color-text: #222;
+    --color-text-muted: #666;
+    --color-break: #e8e4d4;
+    --color-accent: #5a7a9a;
+    --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.4;
+    padding: 1rem;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  header.page-header {
+    border-bottom: 2px solid var(--color-text);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  header.page-header h1 {
+    font-size: 1.4rem; margin: 0; font-weight: 600;
+  }
+  .toolbar { display: flex; gap: 0.5rem; align-items: center; font-size: 0.85rem; }
+  .toolbar button, .toolbar .file-btn {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    padding: 0.3rem 0.7rem;
+    font-family: inherit; font-size: 0.85rem;
+    cursor: pointer; border-radius: 3px;
+    color: var(--color-text);
+  }
+  .toolbar button:hover, .toolbar .file-btn:hover { background: #ececec; }
+  .toolbar input[type="file"] { display: none; }
+
+  .nav-group {
+    margin-bottom: 0.5rem; padding: 0.4rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .nav-group h2 {
+    font-size: 0.8rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--color-text-muted);
+    margin: 0 0 0.3rem 0; font-weight: 600;
+  }
+  .nav-list { display: flex; flex-wrap: wrap; gap: 0.1rem 0.3rem; }
+  .nav-list button {
+    background: transparent; border: 1px solid transparent;
+    padding: 0.15rem 0.45rem;
+    font-family: inherit; font-size: 0.88rem;
+    cursor: pointer; color: var(--color-accent);
+    border-radius: 2px; white-space: nowrap;
+  }
+  .nav-list button:hover { background: var(--color-bg-alt); }
+  .nav-list button.active {
+    background: var(--color-accent); color: white;
+    border-color: var(--color-accent);
+  }
+
+  .settings-panel {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    display: none;
+  }
+  .settings-panel.open { display: block; }
+  .settings-panel label { display: block; margin-bottom: 0.4rem; }
+  .settings-panel input[type="text"] {
+    font-family: monospace; padding: 0.2rem 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 2px; width: 100%; max-width: 360px;
+  }
+  .settings-panel .hint { color: var(--color-text-muted); font-size: 0.8rem; }
+
+  .timetable-section { margin-top: 1.2rem; }
+  .timetable-title { font-size: 1.2rem; font-weight: 600; margin: 0 0 0.2rem 0; }
+  .timetable-subtitle { font-size: 0.85rem; color: var(--color-text-muted); margin: 0 0 0.6rem 0; }
+
+  table.timetable {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.75rem;
+  }
+  table.timetable th, table.timetable td {
+    border: 1px solid var(--color-border);
+    padding: 0.2rem;
+    vertical-align: top;
+    text-align: center;
+  }
+  table.timetable thead th {
+    background: var(--color-bg-header);
+    font-weight: 500; font-size: 0.7rem;
+    padding: 0.3rem 0.2rem;
+  }
+  table.timetable thead tr.long-times th { font-weight: 600; }
+  table.timetable thead tr.short-times th {
+    font-weight: 400;
+    color: var(--color-text-muted);
+    border-top: 1px dashed var(--color-border);
+  }
+  table.timetable td.day-cell, table.timetable th.day-cell {
+    background: var(--color-bg-header);
+    font-weight: 600; width: 80px;
+    text-align: left; padding-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .day-short { font-size: 1.1rem; display: inline-block; margin-right: 0.4rem; }
+  .day-long { font-size: 0.72rem; color: var(--color-text-muted); }
+
+  .lesson {
+    padding: 0.3rem 0.25rem;
+    border-radius: 2px;
+    min-height: 48px;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    font-size: 0.72rem;
+    background: #f5f5f5;
+    color: #222;
+    /* Värv määratakse JS-is inline-stiiliga */
+  }
+  .lesson.text-light { color: #fff; }
+  .lesson.text-light .meta-line { color: rgba(255,255,255,0.85); }
+  .lesson .subject { font-weight: 600; font-size: 0.88rem; line-height: 1.15; }
+  .lesson .meta-line { color: rgba(0,0,0,0.65); font-size: 0.7rem; margin-top: 0.1rem; line-height: 1.2; }
+  td.has-lesson { padding: 1px; }
+
+  td.break-cell, th.break-cell {
+    background: var(--color-break);
+    color: var(--color-text-muted);
+    font-size: 0.75rem; font-style: italic;
+    vertical-align: middle;
+  }
+
+  .loader {
+    padding: 1.5rem 2rem;
+    background: var(--color-bg-alt);
+    border: 1px dashed var(--color-border-strong);
+    text-align: center; border-radius: 4px;
+    margin: 1.5rem 0;
+  }
+  .loader h3 { margin: 0 0 0.5rem 0; }
+  .loader .buttons { display: flex; gap: 0.75rem; justify-content: center; margin: 1rem 0 0.5rem; flex-wrap: wrap; }
+  .loader .buttons .file-btn, .loader .buttons button {
+    padding: 0.5rem 1rem;
+    background: var(--color-accent);
+    color: white; border: none; border-radius: 3px;
+    cursor: pointer; font-family: inherit; font-size: 0.9rem;
+  }
+  .loader .buttons .secondary {
+    background: var(--color-bg-alt);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+  }
+
+  .warning {
+    background: #fff4d4;
+    border-left: 4px solid #d4a84a;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .empty-state {
+    text-align: center; padding: 2.5rem 1rem;
+    color: var(--color-text-muted);
+  }
+
+  @media print {
+    .nav-group, .loader, .warning, .print-hide, .toolbar, .settings-panel { display: none !important; }
+    body { padding: 0; font-size: 10px; }
+    table.timetable { font-size: 0.65rem; }
+    .timetable-section { page-break-inside: avoid; }
+  }
+  @media (max-width: 768px) {
+    body { padding: 0.5rem; font-size: 13px; }
+    table.timetable { font-size: 0.65rem; }
+    header.page-header h1 { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="page-header">
+  <h1>Tunniplaan</h1>
+  <div class="toolbar print-hide">
+    <label class="file-btn">
+      Lae XML
+      <input type="file" id="xmlFile" accept=".xml">
+    </label>
+    <button id="settingsBtn">Paarid…</button>
+    <button id="exportBtn">Salvesta HTML</button>
+    <button onclick="window.print()">Prindi</button>
+  </div>
+</header>
+
+<div class="settings-panel print-hide" id="settingsPanel">
+  <label>
+    Paaristundide perioodipaarid:
+    <input type="text" id="pairsInput" placeholder="nt. 1+2, 3+4, 5+6, 7+8">
+  </label>
+  <label style="display:block; margin-top:0.6rem;">
+    Üksiktunni pikkus (min):
+    <input type="number" id="singleLenInput" min="0" step="5" style="width:6rem;">
+  </label>
+  <label style="display:block; margin-top:0.3rem;">
+    Topelttunni pikkus (min):
+    <input type="number" id="doubleLenInput" min="0" step="5" style="width:6rem;">
+  </label>
+  <div class="hint">
+    Näidatakse juhendatud tunni pikkust, arvutatuna sloti algusest.
+    aSc slot on 45 min, millest 40 on juhendatud tund ja 5 iseseisev töö.
+    Topelttund võtab kaks slotti: 75 min juhendatud tundi ja 15 min iseseisvat tööd.
+    Kui panna 0, näidatakse aSc aegu muutmata.
+  </div>
+  <div class="hint">
+    Kirjuta perioodipaarid plussmärgiga ja eralda komadega.
+    Kui mõni periood on üksik (nt nullitund), jäta see välja.
+  </div>
+  <button id="applyPairs" style="margin-top: 0.5rem; padding: 0.3rem 0.8rem; cursor: pointer;">Rakenda</button>
+</div>
+
+<div class="loader" id="loader">
+  <h3>Lae aSc TimeTables XML-fail</h3>
+  <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0.3rem 0;">
+    Fail loetakse ainult sinu brauseris — midagi kuhugi ei saadeta.
+  </p>
+  <div class="buttons">
+    <label class="file-btn" style="cursor:pointer;">
+      Vali XML-fail…
+      <input type="file" id="xmlFileMain" accept=".xml">
+    </label>
+  </div>
+</div>
+
+<div id="app" style="display: none;">
+  <div id="warningBox"></div>
+  <div class="nav-group">
+    <h2>Klass</h2>
+    <div class="nav-list" id="classList"></div>
+  </div>
+  <div class="nav-group">
+    <h2>Õpetaja</h2>
+    <div class="nav-list" id="teacherList"></div>
+  </div>
+  <div class="nav-group">
+    <h2>Ruum</h2>
+    <div class="nav-list" id="roomList"></div>
+  </div>
+  <div class="timetable-section" id="timetableSection">
+    <div class="empty-state">Vali ülalt klass, õpetaja või ruum.</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+'use strict';
+
+const DB = {
+  periods: [], breaks: [],
+  subjects: {}, teachers: {}, classes: {},
+  classrooms: {}, groups: {}, lessons: {},
+  cards: [],
+};
+
+const DAYS = [
+  { idx: 0, short: 'E', long: 'Esmaspäev' },
+  { idx: 1, short: 'T', long: 'Teisipäev' },
+  { idx: 2, short: 'K', long: 'Kolmapäev' },
+  { idx: 3, short: 'N', long: 'Neljapäev' },
+  { idx: 4, short: 'R', long: 'Reede' },
+];
+
+let PERIOD_PAIRS = [];
+let currentView = null;
+
+// Naidatava tunni pikkus minutites, arvutatuna sloti algusest.
+// aSc slot on 45 min, millest 40 on opetaja juhendatud tund ja 5 iseseisev too.
+// Topelttund votab kaks slotti: 75 min juhendatud tundi ja 15 min iseseisvat tood.
+// 0 tahendab: naita aSc aegu muutmata.
+// Asenduste margised: Map votmega "paev:periood" (paev 0 = esmaspaev).
+// null tahendab, et asendusi ei kuvata.
+let SUBST_CELLS = null;
+
+let SINGLE_LESSON_MINUTES = 40;
+let DOUBLE_LESSON_MINUTES = 75;
+
+function toMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function fromMin(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+function naturalCompare(a, b) {
+  return (a || '').localeCompare(b || '', 'et', { numeric: true, sensitivity: 'base' });
+}
+
+// ============================================================
+// Värvi abifunktsioonid
+// ============================================================
+
+// Parse #RRGGBB → {r, g, b} või null, kui pole kehtiv
+function parseHexColor(hex) {
+  if (!hex) return null;
+  hex = hex.trim().replace(/^#/, '');
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16),
+  };
+}
+
+// Arvutab värvi suhtelise heleduse (0...1). > 0.5 = hele, < 0.5 = tume.
+// Valem WCAG standardi põhjal (lihtsustatud).
+function luminance({ r, g, b }) {
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+// Sobita õpetaja värv tunnilahtri tausta jaoks. Kui värv on väga tume,
+// lahendame teksti värvi nii, et see oleks loetav.
+// Tagastab { bg: "#...", textLight: true/false }
+function pickCellColor(hex) {
+  const rgb = parseHexColor(hex);
+  if (!rgb) return { bg: null, textLight: false };
+  return {
+    bg: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
+    textLight: luminance(rgb) < 0.55,
+  };
+}
+
+function parseXML(text) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/xml');
+  const err = doc.querySelector('parsererror');
+  if (err) throw new Error('XML-i lugemisel tekkis viga');
+
+  DB.periods = []; DB.breaks = []; DB.cards = [];
+  DB.subjects = {}; DB.teachers = {}; DB.classes = {};
+  DB.classrooms = {}; DB.groups = {}; DB.lessons = {};
+
+  doc.querySelectorAll('periods > period').forEach(p => {
+    DB.periods.push({
+      period: parseInt(p.getAttribute('period'), 10),
+      name: p.getAttribute('name'),
+      short: p.getAttribute('short'),
+      starttime: p.getAttribute('starttime'),
+      endtime: p.getAttribute('endtime'),
+    });
+  });
+  DB.periods.sort((a, b) => a.period - b.period);
+
+  doc.querySelectorAll('breaks > break').forEach(b => {
+    DB.breaks.push({
+      name: b.getAttribute('name'),
+      short: b.getAttribute('short'),
+      break: parseInt(b.getAttribute('break'), 10),
+      starttime: b.getAttribute('starttime'),
+      endtime: b.getAttribute('endtime'),
+    });
+  });
+
+  doc.querySelectorAll('subjects > subject').forEach(s => {
+    const id = s.getAttribute('id');
+    DB.subjects[id] = { id, name: s.getAttribute('name'), short: s.getAttribute('short') };
+  });
+
+  doc.querySelectorAll('teachers > teacher').forEach(t => {
+    const id = t.getAttribute('id');
+    const firstname = t.getAttribute('firstname') || '';
+    const lastname = t.getAttribute('lastname') || '';
+    const fullname = (firstname + ' ' + lastname).trim() || t.getAttribute('name') || '';
+    DB.teachers[id] = {
+      id, firstname, lastname, name: fullname,
+      short: t.getAttribute('short'),
+      color: t.getAttribute('color') || '',
+    };
+  });
+
+  doc.querySelectorAll('classes > class').forEach(c => {
+    const id = c.getAttribute('id');
+    DB.classes[id] = {
+      id, name: c.getAttribute('name'), short: c.getAttribute('short'),
+      teacherid: c.getAttribute('teacherid') || '',
+    };
+  });
+
+  doc.querySelectorAll('classrooms > classroom').forEach(r => {
+    const id = r.getAttribute('id');
+    DB.classrooms[id] = { id, name: r.getAttribute('name'), short: r.getAttribute('short') };
+  });
+
+  doc.querySelectorAll('groups > group').forEach(g => {
+    const id = g.getAttribute('id');
+    DB.groups[id] = {
+      id, name: g.getAttribute('name'), classid: g.getAttribute('classid'),
+      entireclass: g.getAttribute('entireclass') === '1',
+    };
+  });
+
+  doc.querySelectorAll('lessons > lesson').forEach(l => {
+    const id = l.getAttribute('id');
+    DB.lessons[id] = {
+      id,
+      subjectid: l.getAttribute('subjectid') || '',
+      classids: (l.getAttribute('classids') || '').split(',').filter(Boolean),
+      teacherids: (l.getAttribute('teacherids') || '').split(',').filter(Boolean),
+      classroomids: (l.getAttribute('classroomids') || '').split(',').filter(Boolean),
+      groupids: (l.getAttribute('groupids') || '').split(',').filter(Boolean),
+      periodspercard: parseInt(l.getAttribute('periodspercard') || '1', 10),
+    };
+  });
+
+  doc.querySelectorAll('cards > card').forEach(c => {
+    DB.cards.push({
+      lessonid: c.getAttribute('lessonid'),
+      period: parseInt(c.getAttribute('period'), 10),
+      days: c.getAttribute('days'),
+      classroomids: (c.getAttribute('classroomids') || '').split(',').filter(Boolean),
+    });
+  });
+
+  guessPeriodPairs();
+}
+
+function guessPeriodPairs() {
+  const periods = DB.periods.map(p => p.period).filter(p => p > 0);
+  const pairs = [];
+  for (let i = 0; i + 1 < periods.length; i += 2) {
+    pairs.push([periods[i], periods[i + 1]]);
+  }
+  PERIOD_PAIRS = pairs;
+  const input = document.getElementById('pairsInput');
+  if (input) input.value = pairs.map(p => p.join('+')).join(', ');
+}
+
+function parsePairsInput(text) {
+  const pairs = [];
+  text.split(',').forEach(part => {
+    const nums = part.trim().split('+').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
+    if (nums.length === 2) pairs.push(nums);
+  });
+  return pairs;
+}
+
+function getPairForPeriod(periodNum) {
+  return PERIOD_PAIRS.find(p => p.includes(periodNum));
+}
+
+function buildColumnStructure() {
+  const cols = [];
+  const allItems = [];
+  DB.periods.forEach(p => allItems.push({ type: 'period', data: p, start: p.starttime, end: p.endtime }));
+  DB.breaks.forEach(b => allItems.push({ type: 'break', data: b, start: b.starttime, end: b.endtime }));
+  allItems.sort((a, b) => toMin(a.start) - toMin(b.start));
+
+  const merged = [];
+  for (const it of allItems) {
+    if (it.type === 'break') {
+      const overlapsPeriod = DB.periods.some(p =>
+        toMin(p.starttime) <= toMin(it.start) && toMin(p.endtime) >= toMin(it.end)
+      );
+      if (overlapsPeriod) continue;
+    }
+    merged.push(it);
+  }
+
+  for (const it of merged) {
+    if (it.type === 'period') {
+      const end = SINGLE_LESSON_MINUTES > 0
+        ? fromMin(toMin(it.data.starttime) + SINGLE_LESSON_MINUTES)
+        : it.data.endtime;
+      cols.push({
+        type: 'period',
+        period: it.data.period,
+        shortLabel: `${it.data.starttime} - ${end}`,
+      });
+    } else {
+      cols.push({
+        type: 'break',
+        shortLabel: `${it.data.starttime} - ${it.data.endtime}`,
+        longLabel: it.data.short || it.data.name,
+        name: it.data.name,
+      });
+    }
+  }
+
+  const longCells = [];
+  let i = 0;
+  while (i < cols.length) {
+    const c = cols[i];
+    if (c.type === 'break') {
+      longCells.push({ label: c.longLabel || c.shortLabel, colSpan: 1, isBreak: true });
+      i++;
+      continue;
+    }
+    const pair = getPairForPeriod(c.period);
+    if (pair && pair[0] === c.period && i + 1 < cols.length &&
+        cols[i + 1].type === 'period' && cols[i + 1].period === pair[1]) {
+      const p1 = DB.periods.find(p => p.period === pair[0]);
+      const p2 = DB.periods.find(p => p.period === pair[1]);
+      const pairEnd = DOUBLE_LESSON_MINUTES > 0
+        ? fromMin(toMin(p1.starttime) + DOUBLE_LESSON_MINUTES)
+        : p2.endtime;
+      longCells.push({
+        label: `${p1.starttime} - ${pairEnd}`,
+        colSpan: 2, isPair: true,
+        periods: [pair[0], pair[1]],
+      });
+      i += 2;
+    } else {
+      longCells.push({
+        label: c.shortLabel,
+        colSpan: 1,
+        periods: [c.period],
+      });
+      i++;
+    }
+  }
+
+  return { cols, longCells };
+}
+
+function renderNav() {
+  const classes = Object.values(DB.classes).sort((a, b) =>
+    naturalCompare(a.short || a.name, b.short || b.name));
+  const classList = document.getElementById('classList');
+  classList.innerHTML = '';
+  classes.forEach(c => {
+    const btn = document.createElement('button');
+    btn.textContent = c.short || c.name;
+    btn.dataset.type = 'class';
+    btn.dataset.id = c.id;
+    btn.addEventListener('click', () => showTimetable('class', c.id));
+    classList.appendChild(btn);
+  });
+
+  const teachers = Object.values(DB.teachers).sort((a, b) =>
+    naturalCompare(a.firstname + ' ' + a.lastname, b.firstname + ' ' + b.lastname));
+  const teacherList = document.getElementById('teacherList');
+  teacherList.innerHTML = '';
+  teachers.forEach(t => {
+    const btn = document.createElement('button');
+    btn.textContent = t.name;
+    btn.dataset.type = 'teacher';
+    btn.dataset.id = t.id;
+    btn.addEventListener('click', () => showTimetable('teacher', t.id));
+    teacherList.appendChild(btn);
+  });
+
+  const rooms = Object.values(DB.classrooms).sort((a, b) =>
+    naturalCompare(a.short || a.name, b.short || b.name));
+  const roomList = document.getElementById('roomList');
+  roomList.innerHTML = '';
+  rooms.forEach(r => {
+    const btn = document.createElement('button');
+    btn.textContent = r.name;
+    btn.dataset.type = 'room';
+    btn.dataset.id = r.id;
+    btn.addEventListener('click', () => showTimetable('room', r.id));
+    roomList.appendChild(btn);
+  });
+}
+
+function setActiveNav(type, id) {
+  document.querySelectorAll('.nav-list button').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.nav-list button[data-type="${type}"][data-id="${id}"]`);
+  if (btn) btn.classList.add('active');
+}
+
+function buildWeekMatrix(filterType, filterId) {
+  const matrix = [];
+  for (let d = 0; d < 5; d++) matrix.push({});
+
+  DB.cards.forEach(card => {
+    const lesson = DB.lessons[card.lessonid];
+    if (!lesson) return;
+
+    if (filterType === 'class' && !lesson.classids.includes(filterId)) return;
+    if (filterType === 'teacher' && !lesson.teacherids.includes(filterId)) return;
+    if (filterType === 'room') {
+      const rooms = card.classroomids.length ? card.classroomids : lesson.classroomids;
+      if (!rooms.includes(filterId)) return;
+    }
+
+    for (let d = 0; d < 5; d++) {
+      if (card.days && card.days[d] === '1') {
+        const span = lesson.periodspercard || 1;
+        if (!matrix[d][card.period]) matrix[d][card.period] = [];
+        matrix[d][card.period].push({ card, lesson, span });
+      }
+    }
+  });
+
+  return { matrix };
+}
+
+function showTimetable(type, id) {
+  setActiveNav(type, id);
+  currentView = { type, id };
+
+  const section = document.getElementById('timetableSection');
+  section.innerHTML = '';
+
+  let title = '', subtitle = '';
+  if (type === 'class') {
+    const c = DB.classes[id];
+    title = c.name;
+    const t = DB.teachers[c.teacherid];
+    if (t) subtitle = 'Klassijuhataja: ' + t.name;
+  } else if (type === 'teacher') {
+    title = DB.teachers[id].name;
+  } else if (type === 'room') {
+    title = DB.classrooms[id].name;
+  }
+
+  const h2 = document.createElement('h2');
+  h2.className = 'timetable-title';
+  h2.textContent = title;
+  section.appendChild(h2);
+
+  if (subtitle) {
+    const p = document.createElement('p');
+    p.className = 'timetable-subtitle';
+    p.textContent = subtitle;
+    section.appendChild(p);
+  }
+
+  const { matrix } = buildWeekMatrix(type, id);
+  const totalLessons = matrix.reduce((sum, day) =>
+    sum + Object.values(day).reduce((s, arr) => s + arr.length, 0), 0);
+
+  if (totalLessons === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = 'Sellele valikule ei vasta ükski tund.<br>' +
+      '<small>(Kui XML on piiratud 10-kaardiline eksport, on see ootuspärane.)<\/small>';
+    section.appendChild(empty);
+    return;
+  }
+
+  const { cols, longCells } = buildColumnStructure();
+
+  const table = document.createElement('table');
+  table.className = 'timetable';
+
+  const thead = document.createElement('thead');
+
+  const longRow = document.createElement('tr');
+  longRow.className = 'long-times';
+  const dayHead = document.createElement('th');
+  dayHead.className = 'day-cell';
+  dayHead.rowSpan = 2;
+  longRow.appendChild(dayHead);
+  longCells.forEach(lc => {
+    const th = document.createElement('th');
+    th.textContent = lc.label;
+    if (lc.colSpan > 1) th.colSpan = lc.colSpan;
+    if (lc.isBreak) th.className = 'break-cell';
+    longRow.appendChild(th);
+  });
+  thead.appendChild(longRow);
+
+  const shortRow = document.createElement('tr');
+  shortRow.className = 'short-times';
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.textContent = c.shortLabel;
+    if (c.type === 'break') th.className = 'break-cell';
+    shortRow.appendChild(th);
+  });
+  thead.appendChild(shortRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  for (let d = 0; d < 5; d++) {
+    const tr = document.createElement('tr');
+
+    const dayCell = document.createElement('td');
+    dayCell.className = 'day-cell';
+    dayCell.innerHTML = `<span class="day-short">${DAYS[d].short}<\/span>` +
+      `<span class="day-long">${DAYS[d].long}<\/span>`;
+    tr.appendChild(dayCell);
+
+    let i = 0;
+    while (i < cols.length) {
+      const c = cols[i];
+
+      if (c.type === 'break') {
+        const td = document.createElement('td');
+        td.className = 'break-cell';
+        tr.appendChild(td);
+        i++;
+        continue;
+      }
+
+      const lessonsHere = (matrix[d][c.period] || []);
+
+      if (lessonsHere.length === 0) {
+        const td = document.createElement('td');
+        tr.appendChild(td);
+        i++;
+        continue;
+      }
+
+      const maxSpan = Math.max(...lessonsHere.map(l => l.span));
+      let consumedCols = 1;
+      if (maxSpan > 1) {
+        const lastPeriodOfLesson = c.period + maxSpan - 1;
+        for (let j = i + 1; j < cols.length; j++) {
+          if (cols[j].type === 'period' && cols[j].period <= lastPeriodOfLesson) {
+            consumedCols++;
+          } else break;
+        }
+      }
+
+      const td = document.createElement('td');
+      td.className = 'has-lesson';
+      if (consumedCols > 1) td.colSpan = consumedCols;
+      lessonsHere.forEach(le => { td.appendChild(renderLesson(le, type)); });
+      tr.appendChild(td);
+      i += consumedCols;
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  section.appendChild(table);
+}
+
+function renderLesson(le, viewType) {
+  const { card, lesson } = le;
+  const div = document.createElement('div');
+  div.className = 'lesson';
+
+  const subject = DB.subjects[lesson.subjectid];
+  const subjShort = subject ? (subject.short || subject.name) : '?';
+
+  const teachers = lesson.teacherids.map(tid => DB.teachers[tid]).filter(Boolean);
+  const teacherNames = teachers.map(t => t.lastname || t.name).join(', ');
+
+  const classes = lesson.classids.map(cid => DB.classes[cid]).filter(Boolean);
+  const classNames = classes.map(c => c.short || c.name).join(', ');
+
+  const roomIds = card.classroomids.length ? card.classroomids : lesson.classroomids;
+  const rooms = roomIds.map(rid => DB.classrooms[rid]).filter(Boolean);
+  const roomNames = rooms.map(r => r.short || r.name).join(', ');
+
+  // Värvi määramine: kui on üks õpetaja → tema värv
+  // Kui mitu → võtame esimese õpetaja värvi (aSc-l niikuinii iga lesseni kohta üks "põhiõpetaja")
+  if (teachers.length > 0 && teachers[0].color) {
+    const { bg, textLight } = pickCellColor(teachers[0].color);
+    if (bg) {
+      div.style.backgroundColor = bg;
+      if (textLight) div.classList.add('text-light');
+    }
+  }
+
+  const parts = [`<div class="subject">${escapeHtml(subjShort)}<\/div>`];
+  const meta = [];
+  if (viewType !== 'teacher' && teacherNames) meta.push(teacherNames);
+  if (viewType !== 'class' && classNames) meta.push(classNames);
+  if (viewType !== 'room' && roomNames) meta.push(roomNames);
+  meta.forEach(m => {
+    parts.push(`<div class="meta-line">${escapeHtml(m)}<\/div>`);
+  });
+  div.innerHTML = parts.join('');
+  return div;
+}
+
+async function loadXMLText(text) {
+  try {
+    parseXML(text);
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    renderNav();
+
+    const orphanCards = DB.cards.filter(c => !DB.lessons[c.lessonid]).length;
+    const lessonCount = Object.keys(DB.lessons).length;
+    const cardCount = DB.cards.length;
+
+    const warn = document.getElementById('warningBox');
+    if (orphanCards > 0 || (lessonCount <= 10 && cardCount <= 10)) {
+      warn.innerHTML = `<div class="warning">
+        <strong>Piiratud ekspordi hoiatus:<\/strong>
+        selles XML-is on ${lessonCount} lessenit ja ${cardCount} kaarti${orphanCards > 0 ? ` (${orphanCards} kaarti viitab lessenitele, mida pole XML-is)` : ''}.
+        See on demo-/tasuta litsentsi 10-kirje piirang.
+        Päriseks kasutuseks on vaja täislitsentsiga eksporditud XML-i.
+      <\/div>`;
+    } else {
+      warn.innerHTML = '';
+    }
+  } catch (err) {
+    alert('Viga XML-i töötlemisel: ' + err.message);
+    console.error(err);
+  }
+}
+
+async function readFileSmart(file) {
+  // aSc TimeTables ekspordib XML-i windows-1257 kodeeringus (Baltikumi),
+  // brauser eeldab tavaliselt UTF-8. Loeme faili baitidena ja otsustame kodeeringu põhjal,
+  // kuidas seda dekodeerida.
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+
+  // Otsi XML-päise encoding="..." atribuuti. Esimesed ~200 baiti piisavad.
+  let declaration = '';
+  for (let i = 0; i < Math.min(bytes.length, 200); i++) {
+    declaration += String.fromCharCode(bytes[i]);
+  }
+
+  let encoding = 'UTF-8';
+  const match = declaration.match(/encoding\s*=\s*["']([^"']+)["']/i);
+  if (match) encoding = match[1].toUpperCase();
+
+  // Kaardistame aSc tavalisemad kodeeringud brauseri TextDecoder nimetustesse
+  const encodingMap = {
+    'WINDOWS-1257': 'windows-1257',
+    'WIN-1257': 'windows-1257',
+    'CP1257': 'windows-1257',
+    'WINDOWS-1252': 'windows-1252',
+    'ISO-8859-1': 'iso-8859-1',
+    'ISO-8859-4': 'iso-8859-4',
+    'ISO-8859-15': 'iso-8859-15',
+    'UTF-8': 'utf-8',
+  };
+  const decoderName = encodingMap[encoding] || encoding.toLowerCase();
+
+  let text;
+  try {
+    text = new TextDecoder(decoderName).decode(bytes);
+  } catch (e) {
+    // Kui kodeering on tundmatu, proovime windows-1257 (kõige tõenäolisem aSc puhul)
+    console.warn('Tundmatu kodeering ' + encoding + ', kasutan windows-1257');
+    text = new TextDecoder('windows-1257').decode(bytes);
+  }
+
+  // Asendame XML-i päise kodeeringuks UTF-8, et DOMParser ei ajaks segi
+  text = text.replace(/<\?xml[^?]*\?>/, '<?xml version="1.0" encoding="UTF-8"?>');
+
+  return text;
+}
+
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  readFileSmart(file).then(loadXMLText).catch(err => {
+    alert('Viga faili lugemisel: ' + err.message);
+    console.error(err);
+  });
+}
+
+// ============================================================
+// HTML ZIP ekspordi funktsioonid
+// ============================================================
+
+// Teeb stringist URL-sõbraliku slug'i: "Kaarin Aamer" -> "kaarin-aamer", "5.r" -> "5-r"
+function slugify(text) {
+  if (!text) return 'x';
+  const map = {
+    'ä': 'a', 'ö': 'o', 'õ': 'o', 'ü': 'u',
+    'Ä': 'a', 'Ö': 'o', 'Õ': 'o', 'Ü': 'u',
+    'š': 's', 'ž': 'z', 'Š': 's', 'Ž': 'z',
+    'å': 'a', 'é': 'e', 'è': 'e', 'ê': 'e',
+  };
+  let s = String(text).trim().toLowerCase();
+  // Asenda eesti/spetsiaaltähed
+  s = s.split('').map(ch => map[ch] !== undefined ? map[ch] : ch).join('');
+  // Kõik mitte-alfanumeerilised asenda sidekriipsuga
+  s = s.replace(/[^a-z0-9]+/g, '-');
+  // Eemalda sidekriipsud algusest/lõpust
+  s = s.replace(/^-+|-+$/g, '');
+  return s || 'x';
+}
+
+// Tagab unikaalsed slugid, lisades vajadusel numbri
+function uniqueSlugs(items, nameGetter) {
+  const used = new Set();
+  const slugs = {};
+  for (const item of items) {
+    const base = slugify(nameGetter(item));
+    let slug = base;
+    let n = 2;
+    while (used.has(slug)) {
+      slug = base + '-' + n;
+      n++;
+    }
+    used.add(slug);
+    slugs[item.id] = slug;
+  }
+  return slugs;
+}
+
+// Ühisesse style.css-i läheb see, mida praegu on <style> tagis (ilma JS-spetsiifiliste asjadeta)
+function getExportCss() {
+  return `/* Tunniplaan — staatiline HTML */
+:root {
+  --color-border: #d4d4d4;
+  --color-border-strong: #999;
+  --color-bg: #ffffff;
+  --color-bg-alt: #f7f7f5;
+  --color-bg-header: #f0efe9;
+  --color-text: #222;
+  --color-text-muted: #666;
+  --color-break: #e8e4d4;
+  --color-accent: #5a7a9a;
+  --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.4;
+  padding: 1rem;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+header.page-header {
+  border-bottom: 2px solid var(--color-text);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+header.page-header h1 { font-size: 1.4rem; margin: 0; font-weight: 600; }
+header.page-header .back-link {
+  font-size: 0.9rem;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+header.page-header .back-link:hover { text-decoration: underline; }
+.print-btn {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  padding: 0.3rem 0.7rem;
+  font-family: inherit; font-size: 0.85rem;
+  cursor: pointer; border-radius: 3px;
+  color: var(--color-text);
+}
+.print-btn:hover { background: #ececec; }
+
+.nav-group {
+  margin-bottom: 0.5rem; padding: 0.4rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.nav-group h2 {
+  font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--color-text-muted);
+  margin: 0 0 0.3rem 0; font-weight: 600;
+}
+.nav-list { display: flex; flex-wrap: wrap; gap: 0.1rem 0.3rem; }
+.nav-list a {
+  background: transparent;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.88rem;
+  color: var(--color-accent);
+  border-radius: 2px; white-space: nowrap;
+  text-decoration: none;
+}
+.nav-list a:hover { background: var(--color-bg-alt); text-decoration: underline; }
+
+.timetable-section { margin-top: 1.2rem; }
+.timetable-title { font-size: 1.2rem; font-weight: 600; margin: 0 0 0.2rem 0; }
+.timetable-subtitle { font-size: 0.85rem; color: var(--color-text-muted); margin: 0 0 0.6rem 0; }
+
+table.timetable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.75rem;
+}
+table.timetable th, table.timetable td {
+  border: 1px solid var(--color-border);
+  padding: 0.2rem;
+  vertical-align: top;
+  text-align: center;
+}
+table.timetable thead th {
+  background: var(--color-bg-header);
+  font-weight: 500; font-size: 0.7rem;
+  padding: 0.3rem 0.2rem;
+}
+table.timetable thead tr.long-times th { font-weight: 600; }
+table.timetable thead tr.short-times th {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  border-top: 1px dashed var(--color-border);
+}
+table.timetable td.day-cell, table.timetable th.day-cell {
+  background: var(--color-bg-header);
+  font-weight: 600; width: 80px;
+  text-align: left; padding-left: 0.4rem;
+  vertical-align: middle;
+}
+.day-short { font-size: 1.1rem; display: inline-block; margin-right: 0.4rem; }
+.day-long { font-size: 0.72rem; color: var(--color-text-muted); }
+
+.lesson {
+  padding: 0.3rem 0.25rem;
+  border-radius: 2px;
+  min-height: 48px;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  font-size: 0.72rem;
+  background: #f5f5f5;
+  color: #222;
+}
+.lesson.text-light { color: #fff; }
+.lesson.text-light .meta-line { color: rgba(255,255,255,0.85); }
+.lesson .subject { font-weight: 600; font-size: 0.88rem; line-height: 1.15; }
+.lesson .meta-line { color: rgba(0,0,0,0.65); font-size: 0.7rem; margin-top: 0.1rem; line-height: 1.2; }
+.lesson a { color: inherit; text-decoration: none; }
+.lesson a:hover { text-decoration: underline; }
+td.has-lesson { padding: 1px; }
+
+td.break-cell, th.break-cell {
+  background: var(--color-break);
+  color: var(--color-text-muted);
+  font-size: 0.75rem; font-style: italic;
+  vertical-align: middle;
+}
+
+.empty-state {
+  text-align: center; padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+}
+
+@media print {
+  .nav-group, .print-hide, .print-btn { display: none !important; }
+  header.page-header .back-link { display: none; }
+  body { padding: 0; font-size: 10px; }
+  table.timetable { font-size: 0.65rem; }
+  .timetable-section { page-break-inside: avoid; }
+}
+@media (max-width: 768px) {
+  body { padding: 0.5rem; font-size: 13px; }
+  table.timetable { font-size: 0.65rem; }
+  header.page-header h1 { font-size: 1.1rem; }
+}
+
+/* Asendused */
+.subst-box {
+  border-left: 4px solid #c0392b;
+  background: #fdf3f2;
+  padding: 0.6rem 0.8rem;
+  margin: 0 0 1rem 0;
+  font-size: 0.85rem;
+}
+.subst-box h3 { margin: 0 0 0.4rem 0; font-size: 0.95rem; color: #c0392b; }
+.subst-box ul { margin: 0; padding-left: 1.1rem; }
+.subst-box li { margin-bottom: 0.2rem; }
+.subst-date { color: var(--color-text-muted); font-weight: 400; }
+
+table.timetable td.has-lesson { position: relative; }
+.subst-mark {
+  position: absolute; top: 1px; right: 2px;
+  font-weight: 700; font-size: 0.8rem; line-height: 1;
+  color: #c0392b;
+}
+td.subst-change, td.subst-absent { box-shadow: inset 0 -3px 0 #c0392b; }
+td.subst-remove { box-shadow: inset 0 -3px 0 #7f8c8d; }
+td.subst-add { box-shadow: inset 0 -3px 0 #27ae60; }
+td.subst-event { box-shadow: inset 0 -3px 0 #8e44ad; }
+
+@media print {
+  .subst-box { border-left-color: #000; background: #f0f0f0; }
+  .subst-mark { color: #000; }
+}
+`;
+}
+
+// Genereerib tabeli HTML-i ühe vaate jaoks (type=class|teacher|room, id)
+// Annab tagasi HTML-i stringi (ainult <table>... osa + pealkirja)
+function buildTimetableHtml(type, id, slugs) {
+  let title = '', subtitle = '';
+  if (type === 'class') {
+    const c = DB.classes[id];
+    title = c.name;
+    const t = DB.teachers[c.teacherid];
+    if (t) subtitle = 'Klassijuhataja: ' + t.name;
+  } else if (type === 'teacher') {
+    title = DB.teachers[id].name;
+  } else if (type === 'room') {
+    title = DB.classrooms[id].name;
+  }
+
+  const { matrix } = buildWeekMatrix(type, id);
+  const totalLessons = matrix.reduce((sum, day) =>
+    sum + Object.values(day).reduce((s, arr) => s + arr.length, 0), 0);
+
+  let html = `<h2 class="timetable-title">${escapeHtml(title)}<\/h2>`;
+  if (subtitle) html += `<p class="timetable-subtitle">${escapeHtml(subtitle)}<\/p>`;
+
+  if (totalLessons === 0) {
+    html += '<div class="empty-state">Sellele valikule ei vasta ükski tund.<\/div>';
+    return html;
+  }
+
+  const { cols, longCells } = buildColumnStructure();
+
+  html += '<table class="timetable"><thead>';
+
+  // Pikkade aegade rida
+  html += '<tr class="long-times"><th class="day-cell" rowspan="2"><\/th>';
+  longCells.forEach(lc => {
+    const cls = lc.isBreak ? ' class="break-cell"' : '';
+    const span = lc.colSpan > 1 ? ` colspan="${lc.colSpan}"` : '';
+    html += `<th${cls}${span}>${escapeHtml(lc.label)}<\/th>`;
+  });
+  html += '<\/tr>';
+
+  // Lühikeste aegade rida
+  html += '<tr class="short-times">';
+  cols.forEach(c => {
+    const cls = c.type === 'break' ? ' class="break-cell"' : '';
+    html += `<th${cls}>${escapeHtml(c.shortLabel)}<\/th>`;
+  });
+  html += '<\/tr><\/thead><tbody>';
+
+  for (let d = 0; d < 5; d++) {
+    html += '<tr>';
+    html += `<td class="day-cell"><span class="day-short">${DAYS[d].short}<\/span>` +
+      `<span class="day-long">${DAYS[d].long}<\/span><\/td>`;
+
+    let i = 0;
+    while (i < cols.length) {
+      const c = cols[i];
+
+      if (c.type === 'break') {
+        html += '<td class="break-cell"><\/td>';
+        i++;
+        continue;
+      }
+
+      const lessonsHere = (matrix[d][c.period] || []);
+
+      if (lessonsHere.length === 0) {
+        html += '<td><\/td>';
+        i++;
+        continue;
+      }
+
+      const maxSpan = Math.max(...lessonsHere.map(l => l.span));
+      let consumedCols = 1;
+      if (maxSpan > 1) {
+        const lastPeriodOfLesson = c.period + maxSpan - 1;
+        for (let j = i + 1; j < cols.length; j++) {
+          if (cols[j].type === 'period' && cols[j].period <= lastPeriodOfLesson) {
+            consumedCols++;
+          } else break;
+        }
+      }
+
+      const span = consumedCols > 1 ? ` colspan="${consumedCols}"` : '';
+
+      let mark = null;
+      if (SUBST_CELLS) {
+        for (let k = 0; k < consumedCols && !mark; k++) {
+          mark = SUBST_CELLS.get(`${d}:${c.period + k}`) || null;
+        }
+      }
+      const markCls = mark ? ` ${mark.klass}` : '';
+
+      html += `<td class="has-lesson${markCls}"${span}>`;
+      if (mark) {
+        html += `<span class="subst-mark" title="${escapeHtml(mark.tekst)}">${escapeHtml(mark.margis)}<\/span>`;
+      }
+      lessonsHere.forEach(le => {
+        html += buildLessonHtml(le, type, slugs);
+      });
+      html += '<\/td>';
+      i += consumedCols;
+    }
+
+    html += '<\/tr>';
+  }
+
+  html += '<\/tbody><\/table>';
+  return html;
+}
+
+function buildLessonHtml(le, viewType, slugs) {
+  const { card, lesson } = le;
+  const subject = DB.subjects[lesson.subjectid];
+  const subjShort = subject ? (subject.short || subject.name) : '?';
+
+  const teachers = lesson.teacherids.map(tid => DB.teachers[tid]).filter(Boolean);
+  const classes = lesson.classids.map(cid => DB.classes[cid]).filter(Boolean);
+  const roomIds = card.classroomids.length ? card.classroomids : lesson.classroomids;
+  const rooms = roomIds.map(rid => DB.classrooms[rid]).filter(Boolean);
+
+  // Värv
+  let style = '';
+  let extraClass = '';
+  if (teachers.length > 0 && teachers[0].color) {
+    const { bg, textLight } = pickCellColor(teachers[0].color);
+    if (bg) {
+      style = ` style="background-color: ${bg};"`;
+      if (textLight) extraClass = ' text-light';
+    }
+  }
+
+  let html = `<div class="lesson${extraClass}"${style}>`;
+  html += `<div class="subject">${escapeHtml(subjShort)}<\/div>`;
+
+  // Metaread linkidega teiste vaadete juurde
+  if (viewType !== 'teacher' && teachers.length) {
+    const links = teachers.map(t => {
+      const slug = slugs.teacher[t.id];
+      const name = escapeHtml(t.lastname || t.name);
+      return slug ? `<a href="../opetaja/${slug}.html">${name}<\/a>` : name;
+    }).join(', ');
+    html += `<div class="meta-line">${links}<\/div>`;
+  }
+
+  if (viewType !== 'class' && classes.length) {
+    const links = classes.map(c => {
+      const slug = slugs.class[c.id];
+      const name = escapeHtml(c.short || c.name);
+      return slug ? `<a href="../klass/${slug}.html">${name}<\/a>` : name;
+    }).join(', ');
+    html += `<div class="meta-line">${links}<\/div>`;
+  }
+
+  if (viewType !== 'room' && rooms.length) {
+    const links = rooms.map(r => {
+      const slug = slugs.room[r.id];
+      const name = escapeHtml(r.short || r.name);
+      return slug ? `<a href="../ruum/${slug}.html">${name}<\/a>` : name;
+    }).join(', ');
+    html += `<div class="meta-line">${links}<\/div>`;
+  }
+
+  html += '<\/div>';
+  return html;
+}
+
+function wrapInHtmlPage(title, bodyHtml, cssPath) {
+  return `<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(title)}<\/title>
+<link rel="stylesheet" href="${cssPath}">
+<\/head>
+<body>
+<div class="container">
+<header class="page-header">
+<h1>${escapeHtml(title)}<\/h1>
+<div>
+<a href="../index.html" class="back-link">← Tagasi valikusse<\/a>
+&nbsp;&nbsp;
+<button class="print-btn print-hide" onclick="window.print()">Prindi<\/button>
+<\/div>
+<\/header>
+${bodyHtml}
+<\/div>
+<\/body>
+<\/html>
+`;
+}
+
+function buildIndexPage(slugs) {
+  const classes = Object.values(DB.classes).sort((a, b) =>
+    naturalCompare(a.short || a.name, b.short || b.name));
+  const teachers = Object.values(DB.teachers).sort((a, b) =>
+    naturalCompare(a.firstname + ' ' + a.lastname, b.firstname + ' ' + b.lastname));
+  const rooms = Object.values(DB.classrooms).sort((a, b) =>
+    naturalCompare(a.short || a.name, b.short || b.name));
+
+  let html = '';
+
+  html += '<div class="nav-group"><h2>Klass<\/h2><div class="nav-list">';
+  classes.forEach(c => {
+    html += `<a href="klass/${slugs.class[c.id]}.html">${escapeHtml(c.short || c.name)}<\/a>`;
+  });
+  html += '<\/div><\/div>';
+
+  html += '<div class="nav-group"><h2>Õpetaja<\/h2><div class="nav-list">';
+  teachers.forEach(t => {
+    html += `<a href="opetaja/${slugs.teacher[t.id]}.html">${escapeHtml(t.name)}<\/a>`;
+  });
+  html += '<\/div><\/div>';
+
+  html += '<div class="nav-group"><h2>Ruum<\/h2><div class="nav-list">';
+  rooms.forEach(r => {
+    html += `<a href="ruum/${slugs.room[r.id]}.html">${escapeHtml(r.name)}<\/a>`;
+  });
+  html += '<\/div><\/div>';
+
+  return `<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tunniplaan<\/title>
+<link rel="stylesheet" href="assets/style.css">
+<\/head>
+<body>
+<div class="container">
+<header class="page-header"><h1>Tunniplaan<\/h1><\/header>
+${html}
+<\/div>
+<\/body>
+<\/html>
+`;
+}
+
+async function exportAsZip() {
+  if (!DB.classes || Object.keys(DB.classes).length === 0) {
+    alert('Laadi kõigepealt XML!');
+    return;
+  }
+
+  if (typeof JSZip === 'undefined') {
+    alert('JSZip teek ei ole laaditud. Kontrolli internetiühendust.');
+    return;
+  }
+
+  const btn = document.getElementById('exportBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Pakin…';
+  btn.disabled = true;
+
+  try {
+    // Loome slugid igale olemile
+    const classSlugs = uniqueSlugs(
+      Object.values(DB.classes),
+      c => c.short || c.name
+    );
+    const teacherSlugs = uniqueSlugs(
+      Object.values(DB.teachers),
+      t => (t.firstname + '-' + t.lastname).trim() || t.name
+    );
+    const roomSlugs = uniqueSlugs(
+      Object.values(DB.classrooms),
+      r => r.short || r.name
+    );
+
+    const slugs = {
+      class: classSlugs,
+      teacher: teacherSlugs,
+      room: roomSlugs,
+    };
+
+    const zip = new JSZip();
+    const root = zip.folder('tunniplaan');
+
+    // CSS
+    root.folder('assets').file('style.css', getExportCss());
+
+    // Index
+    root.file('index.html', buildIndexPage(slugs));
+
+    // Klassid
+    const classFolder = root.folder('klass');
+    for (const c of Object.values(DB.classes)) {
+      const body = buildTimetableHtml('class', c.id, slugs);
+      classFolder.file(
+        slugs.class[c.id] + '.html',
+        wrapInHtmlPage(c.name, body, '../assets/style.css')
+      );
+    }
+
+    // Õpetajad
+    const teacherFolder = root.folder('opetaja');
+    for (const t of Object.values(DB.teachers)) {
+      const body = buildTimetableHtml('teacher', t.id, slugs);
+      teacherFolder.file(
+        slugs.teacher[t.id] + '.html',
+        wrapInHtmlPage(t.name, body, '../assets/style.css')
+      );
+    }
+
+    // Ruumid
+    const roomFolder = root.folder('ruum');
+    for (const r of Object.values(DB.classrooms)) {
+      const body = buildTimetableHtml('room', r.id, slugs);
+      roomFolder.file(
+        slugs.room[r.id] + '.html',
+        wrapInHtmlPage(r.name, body, '../assets/style.css')
+      );
+    }
+
+    // Genereeri ZIP ja laadi alla
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tunniplaan.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const total = Object.keys(DB.classes).length +
+                  Object.keys(DB.teachers).length +
+                  Object.keys(DB.classrooms).length + 1;
+    btn.textContent = `✓ Salvestatud (${total} lk)`;
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
+  } catch (err) {
+    console.error(err);
+    alert('Viga eksportimisel: ' + err.message);
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+function init() {
+  document.getElementById('xmlFile').addEventListener('change', handleFileInput);
+  document.getElementById('xmlFileMain').addEventListener('change', handleFileInput);
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    document.getElementById('settingsPanel').classList.toggle('open');
+  });
+
+  document.getElementById('singleLenInput').value = SINGLE_LESSON_MINUTES;
+  document.getElementById('doubleLenInput').value = DOUBLE_LESSON_MINUTES;
+
+  document.getElementById('applyPairs').addEventListener('click', () => {
+    const text = document.getElementById('pairsInput').value;
+    PERIOD_PAIRS = parsePairsInput(text);
+
+    const readLen = id => {
+      const v = parseInt(document.getElementById(id).value, 10);
+      return isNaN(v) || v < 0 ? 0 : v;
+    };
+    SINGLE_LESSON_MINUTES = readLen('singleLenInput');
+    DOUBLE_LESSON_MINUTES = readLen('doubleLenInput');
+
+    if (currentView) showTimetable(currentView.type, currentView.id);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportAsZip);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
