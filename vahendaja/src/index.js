@@ -60,7 +60,7 @@ export default {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json, text/plain, */*',
-          'User-Agent': 'tunniplaan (+https://github.com/jubejuss/tunniplaan)',
+          'User-Agent': 'tunniplaan (+https://github.com/Kivioli-Riigikool/tunniplaan)',
         },
         body: await request.text(),
         signal: AbortSignal.timeout(AEGUMINE_MS),

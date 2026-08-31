@@ -72,7 +72,9 @@ GitHubi aadressiruumi avamist küsida ei ole mõtet: Actionsi IP-nimekirjas on 5
 
 ### Vahendaja
 
-`vahendaja/` all on Cloudflare Worker, aadressil `https://tunniplaan-vahendaja.jubejuss.workers.dev`.
+`vahendaja/` all on Cloudflare Worker, aadressil `https://tunniplaan-vahendaja.vahendaja.workers.dev`.
+See elab **Ingmar Jaska Cloudflare'i kontos** (`ingmar.jaska@krk.edu.ee`), mitte kooli GitHubi
+organisatsioonis nagu repo. Kaks eri kontot, seda tasub meeles pidada.
 
 See ei ole üldine proxy:
 
@@ -87,9 +89,15 @@ Deploy ja võti:
 
 ```bash
 cd vahendaja
+npx wrangler login                          # kui kontot veel naha ei ole
+npx wrangler whoami                         # otsi sealt Ingmari konto ID
+export CLOUDFLARE_ACCOUNT_ID=<konto-id>     # ilma selleta laheb sinu enda kontosse
 npx wrangler deploy
-npx wrangler secret put VOTI      # sama vaartus, mis GitHubi secret EDUPAGE_VOTI
+npx wrangler secret put VOTI                # sama vaartus, mis GitHubi secret EDUPAGE_VOTI
 ```
+
+`CLOUDFLARE_ACCOUNT_ID` on vajalik sellepärast, et kontosid on kaks. Kui see on seadmata,
+valib wrangler vaikimisi vale konto ja deploy läheb valesse kohta.
 
 GitHubis on kaks secretit: `EDUPAGE_VAHENDAJA` (Workeri aadress) ja `EDUPAGE_VOTI`. Võtit ennast kuskil loetaval kujul ei hoita – kui see kaob, genereeri uus ja pane mõlemasse kohta (Workeri secret ja GitHubi secret). Kui `EDUPAGE_VAHENDAJA` on seadmata, läheb päring otse – nii käitub kohalik masin.
 
