@@ -38,7 +38,7 @@ Sõltuvusi ei ole, ainult Node. Võrgupäringud käivad `fetch`-iga.
 
 ## Avaldamine
 
-Leht elab GitHub Pagesis ja uueneb ise: **https://jubejuss.github.io/tunniplaan/**
+Leht elab GitHub Pagesis ja uueneb ise: **https://kivioli-riigikool.github.io/tunniplaan/**
 
 ```
 GitHub Actions -> Cloudflare Worker -> EduPage
@@ -99,9 +99,9 @@ Kui vahendajat kunagi vaja ei ole (nt generaator kolib kooli serverisse), piisab
 
 Juurleht (`dist/index.html`) on õppekoha valik, sealt edasi `viru/` ja `kivioli-tee-25/`.
 
-Oma domeen `tunniplaan.krk.edu.ee` eeldab, et EENet teeb DNS-i CNAME-kirje `tunniplaan.krk.edu.ee -> jubejuss.github.io`. Alles pärast seda saab GitHubis Settings -> Pages -> Custom domain täita ja Enforce HTTPS sisse lülitada.
+Oma domeen `tunniplaan.krk.edu.ee` eeldab, et EENet teeb DNS-i CNAME-kirje `tunniplaan.krk.edu.ee -> kivioli-riigikool.github.io`. Alles pärast seda saab GitHubis Settings -> Pages -> Custom domain täita ja Enforce HTTPS sisse lülitada.
 
-> **NB.** Kui repo kolib kunagi kooli konto või organisatsiooni alla, muutub ka CNAME sihtkoht. Tasub domeen tellida alles siis, kui konto on lõplik.
+> **NB.** Repo elab alates 31.08.2026 kooli organisatsioonis `Kivioli-Riigikool`, seega on CNAME-i sihtkoht lõplik ja domeeni saab tellida.
 
 ### Aegunud plaan
 

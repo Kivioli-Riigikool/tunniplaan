@@ -48,7 +48,7 @@ Punktid 2 ja 3 on II osa teema.
 
 ## Kus see praegu elab
 
-**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/jubejuss/tunniplaan`, leht `https://jubejuss.github.io/tunniplaan/`. Generaator jookseb GitHub Actionsis koolipäeviti iga 10 min tagant, EduPage'ini pääseb Cloudflare Workeri kaudu. Käsitsi ei pea midagi tegema.
+**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/Kivioli-Riigikool/tunniplaan`, leht `https://kivioli-riigikool.github.io/tunniplaan/`. Generaator jookseb GitHub Actionsis koolipäeviti iga 10 min tagant, EduPage'ini pääseb Cloudflare Workeri kaudu. Käsitsi ei pea midagi tegema.
 
 | Osa | Kus | Kelle oma |
 |---|---|---|

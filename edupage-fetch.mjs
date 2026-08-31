@@ -6,7 +6,7 @@
 // maha votta. Seega: paringule aegumine, kolm katset ja selge
 // veateade, mis utleb ka pohjuse (fetch peidab selle cause alla).
 
-const UA = 'tunniplaan (+https://github.com/jubejuss/tunniplaan)';
+const UA = 'tunniplaan (+https://github.com/Kivioli-Riigikool/tunniplaan)';
 const KATSEID = 3;
 const AEGUMINE_MS = 20000;
 
