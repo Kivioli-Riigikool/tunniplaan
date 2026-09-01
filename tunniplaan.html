@@ -463,8 +463,24 @@ function parseXML(text) {
   guessPeriodPairs();
 }
 
+// Naidatav tunninumber ei ole sama, mis EduPage'i sisemine period.
+// Virus on nulltund period=0, Kivioli tee 25-l period=1 ja nullile
+// viitab ainult name/short. Seetottu tuleb nulltund tuvastada
+// naidatava numbri, mitte sisenumbri jargi - muidu jaab ta Kivioli
+// tee 25-l paaridest valja votmata ja paarid nihkuvad.
+function periodLabelNum(p) {
+  const n = parseInt(p.short || p.name, 10);
+  return isNaN(n) ? p.period : n;
+}
+
+function isZeroPeriod(p) {
+  return periodLabelNum(p) === 0;
+}
+
+// Nulltund on eraldi, paarid moodustuvad alles sellest edasi:
+// 1+2, 3+4, 5+6, 7+8.
 function guessPeriodPairs() {
-  const periods = DB.periods.map(p => p.period).filter(p => p > 0);
+  const periods = DB.periods.filter(p => !isZeroPeriod(p)).map(p => p.period);
   const pairs = [];
   for (let i = 0; i + 1 < periods.length; i += 2) {
     pairs.push([periods[i], periods[i + 1]]);
@@ -507,7 +523,9 @@ function buildColumnStructure() {
 
   for (const it of merged) {
     if (it.type === 'period') {
-      const end = SINGLE_LESSON_MINUTES > 0
+      // Nulltund on pikem kui tavatund (08:00-09:00) ja seda ei tohi
+      // 40 minuti peale kaerpida - jareldus tuleb aSc enda ajast.
+      const end = (SINGLE_LESSON_MINUTES > 0 && !isZeroPeriod(it.data))
         ? fromMin(toMin(it.data.starttime) + SINGLE_LESSON_MINUTES)
         : it.data.endtime;
       cols.push({

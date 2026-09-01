@@ -171,7 +171,7 @@ function laeRenderdaja() {
     ${src}
     return {
       DB, buildIndexPage, buildTimetableHtml, wrapInHtmlPage, uniqueSlugs, getExportCss,
-      seaPaarid: v => { PERIOD_PAIRS = v; },
+      guessPeriodPairs,
       seaUksik:  v => { SINGLE_LESSON_MINUTES = v; },
       seaTopelt: v => { DOUBLE_LESSON_MINUTES = v; },
       seaAsendused: v => { SUBST_CELLS = v; },
@@ -179,14 +179,6 @@ function laeRenderdaja() {
   `);
 
   return tehas(doc, { print: noop }, noop, console);
-}
-
-// Paarid tuletatakse perioodidest: 1+2, 3+4, 5+6, 7+8.
-function tuletaPaarid(periods) {
-  const nums = periods.map(p => p.period).filter(p => p > 0);
-  const paarid = [];
-  for (let i = 0; i + 1 < nums.length; i += 2) paarid.push([nums[i], nums[i + 1]]);
-  return paarid;
 }
 
 // ---------------------------------------------------------------
@@ -342,7 +334,9 @@ async function genereeri(votmed, kuupaev) {
     viimaneR = R;
     seisud[votme] = { aegunud, lopp };
     teisendaDB(T, R.DB);
-    R.seaPaarid(tuletaPaarid(R.DB.periods));
+    // Paarid tuleb tunniplaan.html-i enda loogikast, mitte siit uuesti
+    // kirjutatuna - muidu lahevad vidin ja genereeritud leht lahku.
+    R.guessPeriodPairs();
     R.seaUksik(SINGLE_MIN);
     R.seaTopelt(DOUBLE_MIN);
 
