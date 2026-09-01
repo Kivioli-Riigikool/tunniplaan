@@ -1112,6 +1112,10 @@ td.break-cell, th.break-cell {
   font-size: 0.85rem;
 }
 .subst-box h3 { margin: 0 0 0.4rem 0; font-size: 0.95rem; color: #c0392b; }
+/* Syndmus ei ole muudatus ega viga: tund ara ei jaa ja asendajat ei ole.
+   Punane kast on asenduste ja aegunud plaani jaoks, syndmus saab kollase. */
+.subst-box.subst-box-event { border-left-color: #d68910; background: #fdf7e8; }
+.subst-box.subst-box-event h3 { color: #a86b0c; }
 .subst-box ul { margin: 0; padding-left: 1.1rem; }
 .subst-box li { margin-bottom: 0.2rem; }
 .subst-date { color: var(--color-text-muted); font-weight: 400; }
@@ -1128,7 +1132,8 @@ td.subst-add { box-shadow: inset 0 -3px 0 #27ae60; }
 td.subst-event { box-shadow: inset 0 -3px 0 #8e44ad; }
 
 @media print {
-  .subst-box { border-left-color: #000; background: #f0f0f0; }
+  .subst-box, .subst-box.subst-box-event { border-left-color: #000; background: #f0f0f0; }
+  .subst-box.subst-box-event h3 { color: #000; }
   .subst-mark { color: #000; }
 }
 `;

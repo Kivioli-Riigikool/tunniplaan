@@ -13,7 +13,7 @@
 import { readFileSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { laeAsendused } from './edupage-asendused.mjs';
+import { laeAsendused, SYNDMUSTE_SEKTSIOON } from './edupage-asendused.mjs';
 import { edupagePost } from './edupage-fetch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -230,15 +230,29 @@ function nadalapaevaIndeks(kuupaev) {
   return d >= 1 && d <= 5 ? d - 1 : null;
 }
 
-function asendusteKast(read, kuupaev) {
+function asendusteKast(read, kuupaev, pealkiri = 'Tänased muudatused', lisaklass = '') {
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const punktid = read.map(r =>
     `<li><strong>${esc(r.silt)}</strong>` +
     (r.perioodid.length ? ` (${r.perioodid.join('.-')}. tund)` : '') +
     `: ${esc(r.tekst)}</li>`
   ).join('');
-  return `<div class="subst-box"><h3>Tänased muudatused ` +
+  return `<div class="subst-box${lisaklass ? ' ' + lisaklass : ''}"><h3>${esc(pealkiri)} ` +
     `<span class="subst-date">${esc(kuupaev)}</span></h3><ul>${punktid}</ul></div>`;
+}
+
+// Kooliylene syndmus laheb klassi lehele siis, kui klass on selle
+// "Klass(id)" loendis, ja koigile siis, kui loendit ei ole.
+// NB! aSc-s on mone klassi nimes lopus tuhik ("1.v "), asenduste lehel
+// mitte, seega vordleme trimmitud kujul.
+// Sama syndmus voib olla korraga nii kalendris kui klassi enda ridade
+// seas, seega viskame duplikaadid valja.
+function syndmusedKlassile(syndmused, o, omaread) {
+  const nimed = [String(o.short || '').trim(), String(o.name || '').trim()].filter(Boolean);
+  return syndmused.filter(r =>
+    (!r.klassid?.length || r.klassid.some(k => nimed.includes(k))) &&
+    !omaread.some(x => x.tekst === r.tekst)
+  );
 }
 
 // ---------------------------------------------------------------
@@ -330,6 +344,12 @@ async function genereeri(votmed, kuupaev) {
       }
     }
 
+    // Kooliylesed syndmused tulevad omaette sektsioonis, mille paise ei ole
+    // klassi nimi. Ilma eraldi kasitluseta ei leiaks neid ukski klass ja
+    // aktus kaoks vaikselt ara.
+    const yldsyndmused = asendused[SYNDMUSTE_SEKTSIOON] || [];
+    delete asendused[SYNDMUSTE_SEKTSIOON];
+
     const R = laeRenderdaja();
     viimaneR = R;
     seisud[votme] = { aegunud, lopp };
@@ -359,7 +379,12 @@ async function genereeri(votmed, kuupaev) {
     const indexHtml = R.buildIndexPage(slugs).replace(
       '<header class="page-header"><h1>Tunniplaan</h1></header>',
       '<header class="page-header"><h1>Tunniplaan</h1></header>' +
-        paiseRiba(kool, tp, lopp, kuupaev, aegunud)
+        paiseRiba(kool, tp, lopp, kuupaev, aegunud) +
+        // Kooliylene syndmus puudutab kogu maja, seega on ta ka oppekoha
+        // avalehel, mitte ainult uksikute klasside lehtedel.
+        (yldsyndmused.length
+          ? asendusteKast(yldsyndmused, kuupaev, 'Täna koolis', 'subst-box-event')
+          : '')
     );
     writeFileSync(join(juur, 'index.html'), indexHtml);
 
@@ -373,9 +398,12 @@ async function genereeri(votmed, kuupaev) {
         // Asendused seotakse klassi nime jargi, nagu EduPage neid grupeerib.
         // NB! aSc-s on mone klassi nimes lopus tuhik ("1.v "), asenduste
         // lehel mitte, seega vordleme trimmitud kujul.
-        const read = tyyp === 'class' && paev !== null
+        const omaread = tyyp === 'class' && paev !== null
           ? (asendusedTrim.get(String(o.short || '').trim()) ||
              asendusedTrim.get(String(o.name || '').trim()) || [])
+          : [];
+        const read = tyyp === 'class' && paev !== null
+          ? [...syndmusedKlassile(yldsyndmused, o, omaread), ...omaread]
           : [];
 
         if (read.length) {
@@ -390,7 +418,15 @@ async function genereeri(votmed, kuupaev) {
         }
 
         let body = R.buildTimetableHtml(tyyp, o.id, slugs);
-        if (read.length) body = asendusteKast(read, kuupaev) + body;
+        if (read.length) {
+          // Punane kast tahendab, et tunniplaan ei kehti nii, nagu ta lehel
+          // seisab. Kui klassil on ainult syndmused, ei ole midagi punast
+          // teatada, ja kast on sama kollane nagu avalehel.
+          const ainultSyndmused = read.every(r => r.tyyp.startsWith('event'));
+          body = ainultSyndmused
+            ? asendusteKast(read, kuupaev, 'Täna koolis', 'subst-box-event') + body
+            : asendusteKast(read, kuupaev) + body;
+        }
 
         const fail = slugs[tyyp][o.id] + '.html';
         writeFileSync(join(juur, kaust, fail), R.wrapInHtmlPage(nimi(o), body, '../assets/style.css'));
@@ -406,7 +442,8 @@ async function genereeri(votmed, kuupaev) {
       `  tunniplaan nr ${tp.tt_num}, kehtib alates ${tp.datefrom} (${tp.text})\n` +
       `  ${klassid.length} klassi, ${opetajad.length} õpetajat, ${ruumid.length} ruumi, ` +
       `${R.DB.cards.length} kaarti\n` +
-      `  ${muudetud} klassi tänaste muudatustega (${kuupaev})\n` +
+      `  ${muudetud} klassi tänaste muudatustega (${kuupaev}), ` +
+      `${yldsyndmused.length} kooliülest sündmust\n` +
       `  -> ${kool.valjund}/`
     );
   }

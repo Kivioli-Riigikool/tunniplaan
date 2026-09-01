@@ -248,6 +248,43 @@ Kuvamine: punase äärega kast lehe ülal + mõjutatud lahtritel punane joon all
 
 Maht: 25.05.2026 oli Viru õppekohas 178 muudatust 66 klassis. Ühel päeval.
 
+### Sündmused
+
+Sündmused (aktus, projektipäev) tulevad sama päringuga, aga **kahes eri kujus**:
+
+| Kuju | Sektsiooni päis | Kellele |
+|---|---|---|
+| Klassipõhine | klassi nimi, nt `4.a` | ainult sellele klassile |
+| Kooliülene | **`Sündmuste kalender`** | kogu majale |
+
+Kooliülese sektsiooni päis ei ole klassi nimi, seega ei leidnud seda ükski klass ja
+sündmus kadus vaikselt ära. Nüüd võetakse see `SYNDMUSTE_SEKTSIOON` järgi eraldi välja
+ja pannakse nii õppekoha avalehele (`Täna koolis`) kui igale puudutatud klassile.
+
+Sündmuse tekst on kujul:
+
+```
+9:00-15:00, Kooliaasta avaaktus - Õpetajad: JERMILOV ALEKSEI, ... , Klass(id): 1.a, 1.b, ...
+```
+
+Õpetajate ja klasside loend on kooliülesel sündmusel **üle 1500 tähemärgi**, seega
+kuvatakse ainult esimest osa. `Klass(id)` loend läheb eraldi väljale `klassid` ja selle
+järgi otsustatakse, kelle lehele sündmus kuulub. Kui loendit ei ole, läheb sündmus kõigile.
+01.09.2026 aktus oli kirjas 63 klassile 65-st: `3.v ind plaan2` ja `8.c ind plaan` ei olnud
+EduPage'i loendis, nii et nemad seda ei näe. See on allika seis, mitte parsimisviga.
+
+Sündmusel **ei ole perioodi** (`period` on tühi), seega lahtreid alla ei joonita – sündmus
+on ainult ülemises kastis. Kellaaeg on tekstis.
+
+Kooliülene sündmus võib olla korraga ka klassi enda ridade seas, seega ühendamisel
+visatakse duplikaadid teksti järgi välja.
+
+**Värv ütleb raskusastme.** Punane kast on selleks, kui tunniplaan lehel enam ei kehti:
+asendus, ärajäänud tund, aegunud plaan. Sündmus ei ole muudatus, seega on tal kollane kast
+(`.subst-box-event`). Kui klassil on samal päeval nii sündmus kui asendus, on kast punane,
+sest punast on siis päriselt midagi teatada.
+
+
 ---
 
 ## Lõksud, mis on juba korra hammustanud
@@ -284,6 +321,8 @@ Praktiline järeldus: praegu sobib see Ingmarile näitamiseks ja uue plaani peal
 
 - Asendused ainult klassilehtedel. Õpetaja ja ruumi vaadete jaoks on vaja `mode=teachers` ja `mode=classrooms` päringuid. Parser ise töötab.
 - Genereeritakse ühe päeva seis. Otsustamata, kas näidata ka homset või kogu nädalat.
+- Sündmusi näeb ainult sündmuse enda päeval. Aktusest on kasu ette teades, seega tasuks
+  vaadata 7–14 päeva ette. See on üks POST päeva ja kooli kohta, muud loogikat juures ei ole.
 - Paarid tuletatakse mehaaniliselt, mitte `durationperiods` järgi. See tähendab, et topelttunni silti näeb ka klass, kellel seal topelttundi ei ole.
 - Avaldatakse iga 5 min tagant uuesti, ka siis kui midagi ei muutunud. Muutuse tuvastamist ei ole.
   Pagesi 10 ehituse tunnis piir siia ei puutu – see kehtib ainult Pagesi enda ehitusele, mitte oma

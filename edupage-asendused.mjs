@@ -6,6 +6,11 @@
 
 import { edupagePost } from './edupage-fetch.mjs';
 
+// EduPage kogub kooliylesed syndmused (aktus, sisseelamise paev) omaette
+// sektsiooni, mille paise ei ole klassi nimi. Klassipohised syndmused
+// tulevad tavaliste asenduste seas, klassi nime all.
+export const SYNDMUSTE_SEKTSIOON = 'Sündmuste kalender';
+
 const TUUBID = {
   change: { silt: 'Asendus', margis: '!', klass: 'subst-change' },
   remove: { silt: 'Jääb ära', margis: '×', klass: 'subst-remove' },
@@ -20,9 +25,11 @@ function tekst(html) {
     .replace(/<s>(.*?)<\/s>/g, '$1')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -38,6 +45,25 @@ function parsiPeriood(s) {
     return out;
   }
   return a;
+}
+
+// Syndmuse info on kujul
+//   "9:00-15:00, Kooliaasta avaaktus - Õpetajad: A, B, ..., Klass(id): 1.a, 1.b, ..."
+// Kooliylese syndmuse puhul on opetajate ja klasside loend poolteist tuhat
+// tahemarki pikk, nii et kuvada saab ainult esimest osa. Klasside loend
+// laheb eraldi valja: selle jargi otsustame, kelle lehele syndmus kuulub.
+// Tyhi loend tahendab, et EduPage klasse ei nimetanud, ja siis laheb
+// syndmus koigile.
+function parsiSyndmus(info) {
+  const kl = info.match(/Klass\(id\):\s*(.*)$/);
+  const klassid = kl
+    ? kl[1].split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  const pealkiri = info
+    .split(/\s[-–]\s*Õpetajad:|,?\s*Klass\(id\):/)[0]
+    .replace(/[,\s]+$/, '')
+    .trim();
+  return { pealkiri: pealkiri || info, klassid };
 }
 
 export function parsiAsendused(html) {
@@ -61,12 +87,21 @@ export function parsiAsendused(html) {
       const inf = sisu.match(/<div class="info">\s*<span[^>]*>(.*?)<\/span>/s);
       if (!inf) continue;
 
-      read.push({
+      const info = tekst(inf[1]);
+      const rida = {
         tyyp,
         ...(TUUBID[tyyp] || { silt: tyyp, margis: '!', klass: 'subst-change' }),
         perioodid: per ? parsiPeriood(per[1]) : [],
-        tekst: tekst(inf[1]),
-      });
+        tekst: info,
+      };
+
+      if (tyyp.startsWith('event')) {
+        const { pealkiri, klassid } = parsiSyndmus(info);
+        rida.tekst = pealkiri;
+        rida.klassid = klassid;
+      }
+
+      read.push(rida);
     }
 
     if (read.length) tulemus[nimi] = read;
