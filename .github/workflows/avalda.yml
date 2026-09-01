@@ -12,9 +12,18 @@ on:
 
   # Asenduste parast. Cron on UTC, Eesti on suvel UTC+3 ja talvel
   # UTC+2, seega 4-14 UTC katab koolipaeva u 06:00-17:00 kohalikku
-  # aega. Iga 10 min teeb 6 avaldamist tunnis, Pagesi piir on ~10.
+  # aega.
+  #
+  # 5 minutit on GitHubi luhim lubatud intervall. Pagesi 10 ehituse
+  # tunnis piir siia ei puutu: see kehtib ainult Pagesi enda ehitusele,
+  # mitte oma workflow'ga avaldamisele. Repo on avalik, seega Actionsi
+  # minutid on tasuta.
+  #
+  # NB! Cron on soovitus, mitte lubadus. Mootmine */10 pealt andis
+  # mediaani 10.3 min, keskmise 12.0 ja halvimal juhul 20.6 min.
+  # Oodata tasub sama hajuvust ka siit: enamasti 5-7 min, vahel rohkem.
   schedule:
-    - cron: '*/10 4-14 * * 1-5'
+    - cron: '*/5 4-14 * * 1-5'
 
   # Kasitsi: Actions -> see workflow -> Run workflow.
   workflow_dispatch:

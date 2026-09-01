@@ -48,7 +48,9 @@ GitHub Actions -> Cloudflare Worker -> EduPage
 `.github/workflows/avalda.yml` käivitub kolmel juhul:
 
 - **iga push `main` peale** – generaatori või `tunniplaan.html`-i muudatus jõuab kohe lehele
-- **ajakava järgi**, koolipäeviti iga 10 minuti tagant (cron `*/10 4-14 * * 1-5`, UTC) – see hoiab asendused värskena
+- **ajakava järgi**, koolipäeviti iga 5 minuti tagant (cron `*/5 4-14 * * 1-5`, UTC) – see hoiab asendused värskena.
+  5 min on GitHubi lühim lubatud intervall. Cron on aga soovitus, mitte lubadus: mõõtmine `*/10` pealt
+  andis mediaani 10.3 min ja halvimal juhul 20.6 min, seega tegelik viide on tavaliselt intervallist pikem
 - **käsitsi**: `gh workflow run avalda.yml` või Actions -> workflow -> Run workflow
 
 Kui EduPage või vahendaja ei vasta, kukub jooks läbi ja **eelmine avaldatud versioon jääb lehele alles**. Katkist lehte ei teki.
@@ -283,7 +285,9 @@ Praktiline järeldus: praegu sobib see Ingmarile näitamiseks ja uue plaani peal
 - Asendused ainult klassilehtedel. Õpetaja ja ruumi vaadete jaoks on vaja `mode=teachers` ja `mode=classrooms` päringuid. Parser ise töötab.
 - Genereeritakse ühe päeva seis. Otsustamata, kas näidata ka homset või kogu nädalat.
 - Paarid tuletatakse mehaaniliselt, mitte `durationperiods` järgi. See tähendab, et topelttunni silti näeb ka klass, kellel seal topelttundi ei ole.
-- Avaldatakse iga 10 min tagant uuesti, ka siis kui midagi ei muutunud. Muutuse tuvastamist ei ole.
+- Avaldatakse iga 5 min tagant uuesti, ka siis kui midagi ei muutunud. Muutuse tuvastamist ei ole.
+  Pagesi 10 ehituse tunnis piir siia ei puutu – see kehtib ainult Pagesi enda ehitusele, mitte oma
+  workflow'ga avaldamisele.
 - Kooli koduleht: kui failid peaks kunagi kooli enda serverisse minema, tuleb `avalda.yml`-i lõppu lisada rsync/SFTP samm. Vt `YLEVAADE.md` A-lahendus.
 - Õpetajavaates on kellaajad mitmetimõistetavad, kui klassidel peaksid kunagi erinevad ajad tulema. Praegu on kõik ühe skeemi peal.
 

@@ -48,7 +48,7 @@ Punktid 2 ja 3 on II osa teema.
 
 ## Kus see praegu elab
 
-**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/Kivioli-Riigikool/tunniplaan`, leht `https://kivioli-riigikool.github.io/tunniplaan/`. Generaator jookseb GitHub Actionsis koolipäeviti iga 10 min tagant, EduPage'ini pääseb Cloudflare Workeri kaudu. Käsitsi ei pea midagi tegema.
+**Otsustatud 30.08.2026: lahendus B, GitHub Pages.** Repo `github.com/Kivioli-Riigikool/tunniplaan`, leht `https://kivioli-riigikool.github.io/tunniplaan/`. Generaator jookseb GitHub Actionsis koolipäeviti iga 5 min tagant, EduPage'ini pääseb Cloudflare Workeri kaudu. Käsitsi ei pea midagi tegema.
 
 | Osa | Kus | Kelle oma |
 |---|---|---|
@@ -160,7 +160,7 @@ võidaks.
 ### Mis on tehtud
 
 - `dist/index.html` – saidi juurleht, valik kahe õppekoha vahel. Genereeritakse koos ülejäänuga.
-- `.github/workflows/avalda.yml` – genereerib ja avaldab. Push'i peale, koolipäeviti iga 10 min ja käsitsi.
+- `.github/workflows/avalda.yml` – genereerib ja avaldab. Push'i peale, koolipäeviti iga 5 min ja käsitsi.
 - `vahendaja/` – Cloudflare Worker, ilma milleta Actions EduPage'ini ei pääse.
 - Aegunud plaani puhul on lehel punase äärega hoiatuskast. Avaldamist see ei peata.
 
