@@ -241,6 +241,103 @@ function asendusteKast(read, kuupaev, pealkiri = 'Tänased muudatused', lisaklas
     `<span class="subst-date">${esc(kuupaev)}</span></h3><ul>${punktid}</ul></div>`;
 }
 
+// ---------------------------------------------------------------
+// Tulevased syndmused
+// ---------------------------------------------------------------
+
+// Mitu paeva ette syndmusi otsitakse. Iga paev on eraldi POST, seega on
+// see arv otse EduPage'i koormus: kuni 10 tookaeva x 2 oppekohta iga
+// jooksu kohta. Nadalavahetust ei kysita, aSc syndmused on tookaevadel.
+const ETTEVAATE_PAEVI = 14;
+const ETTEVAATE_KORRAGA = 4;
+
+const NADALAPAEV = ['E', 'T', 'K', 'N', 'R'];
+
+function lisaPaevi(kuupaev, n) {
+  const d = new Date(kuupaev + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// "2026-09-02" -> "K 02.09"
+function lyhiKuupaev(kuupaev) {
+  const [, kuu, paev] = kuupaev.split('-');
+  const n = nadalapaevaIndeks(kuupaev);
+  return `${n !== null ? NADALAPAEV[n] + ' ' : ''}${paev}.${kuu}`;
+}
+
+// Uks syndmus tuleb korraga mitmes sektsioonis (nt "4.a" ja
+// "4.a ind plaan"), seega liidame need teksti jargi kokku.
+// Kuulajaskond tuleb "Klass(id)" loendist; kui seda ei ole, siis
+// sektsiooni nimest, ja kalendrisektsiooni puhul laheb syndmus koigile.
+function syndmusedPaevast(paeva, kuupaev) {
+  const kaupa = new Map();
+
+  for (const [sektsioon, read] of Object.entries(paeva)) {
+    for (const r of read) {
+      if (!r.tyyp.startsWith('event')) continue;
+
+      const olem = kaupa.get(r.tekst) ||
+        { kuupaev, tekst: r.tekst, klassid: [], koigile: false };
+
+      if (r.klassid?.length) {
+        for (const k of r.klassid) if (!olem.klassid.includes(k)) olem.klassid.push(k);
+      } else if (sektsioon === SYNDMUSTE_SEKTSIOON) {
+        olem.koigile = true;
+      } else if (!olem.klassid.includes(sektsioon)) {
+        olem.klassid.push(sektsioon);
+      }
+
+      kaupa.set(r.tekst, olem);
+    }
+  }
+
+  return [...kaupa.values()];
+}
+
+// Syndmused jargmise kahe nadala sees. Asendusi siia ei vota: need
+// muutuvad iga paev ja ette naidatuna oleksid nad valeinfo.
+// Uhe paeva ebaonnestumine ei tohi ulejaanuid ara votta, seega
+// puutakse viga paeva kaupa.
+async function laeTulevasedSyndmused(host, kuupaev) {
+  const paevad = [];
+  for (let i = 1; i <= ETTEVAATE_PAEVI; i++) {
+    const p = lisaPaevi(kuupaev, i);
+    if (nadalapaevaIndeks(p) !== null) paevad.push(p);
+  }
+
+  const tulemus = [];
+  for (let i = 0; i < paevad.length; i += ETTEVAATE_KORRAGA) {
+    const osa = paevad.slice(i, i + ETTEVAATE_KORRAGA);
+    const vastused = await Promise.all(osa.map(async p => {
+      try {
+        return [p, await laeAsendused(host, p)];
+      } catch (e) {
+        console.warn(`  HOIATUS: ${p} sündmusi ei saanud (${e.message})`);
+        return [p, {}];
+      }
+    }));
+    for (const [p, paeva] of vastused) tulemus.push(...syndmusedPaevast(paeva, p));
+  }
+
+  return tulemus;
+}
+
+function tulemasKast(read) {
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const punktid = read.map(r =>
+    `<li><strong>${esc(lyhiKuupaev(r.kuupaev))}</strong>: ${esc(r.tekst)}</li>`
+  ).join('');
+  return `<div class="subst-box subst-box-event"><h3>Tulemas ` +
+    `<span class="subst-date">järgmise ${ETTEVAATE_PAEVI} päeva sees</span></h3>` +
+    `<ul>${punktid}</ul></div>`;
+}
+
+function tulemasKlassile(tulevased, o) {
+  const nimed = [String(o.short || '').trim(), String(o.name || '').trim()].filter(Boolean);
+  return tulevased.filter(r => r.koigile || r.klassid.some(k => nimed.includes(k)));
+}
+
 // Kooliylene syndmus laheb klassi lehele siis, kui klass on selle
 // "Klass(id)" loendis, ja koigile siis, kui loendit ei ole.
 // NB! aSc-s on mone klassi nimes lopus tuhik ("1.v "), asenduste lehel
@@ -350,6 +447,15 @@ async function genereeri(votmed, kuupaev) {
     const yldsyndmused = asendused[SYNDMUSTE_SEKTSIOON] || [];
     delete asendused[SYNDMUSTE_SEKTSIOON];
 
+    // Ettevaade kaib ka nadalavahetusel: pyhapaeval on jargmise nadala
+    // syndmused just see, mida keegi vaadata tahab.
+    let tulevased = [];
+    try {
+      tulevased = await laeTulevasedSyndmused(kool.host, kuupaev);
+    } catch (e) {
+      console.warn(`  HOIATUS: tulevasi sündmusi ei saanud (${e.message})`);
+    }
+
     const R = laeRenderdaja();
     viimaneR = R;
     seisud[votme] = { aegunud, lopp };
@@ -384,7 +490,8 @@ async function genereeri(votmed, kuupaev) {
         // avalehel, mitte ainult uksikute klasside lehtedel.
         (yldsyndmused.length
           ? asendusteKast(yldsyndmused, kuupaev, 'Täna koolis', 'subst-box-event')
-          : '')
+          : '') +
+        (tulevased.length ? tulemasKast(tulevased) : '')
     );
     writeFileSync(join(juur, 'index.html'), indexHtml);
 
@@ -417,7 +524,10 @@ async function genereeri(votmed, kuupaev) {
           R.seaAsendused(null);
         }
 
+        const omaTulevased = tyyp === 'class' ? tulemasKlassile(tulevased, o) : [];
+
         let body = R.buildTimetableHtml(tyyp, o.id, slugs);
+        if (omaTulevased.length) body = tulemasKast(omaTulevased) + body;
         if (read.length) {
           // Punane kast tahendab, et tunniplaan ei kehti nii, nagu ta lehel
           // seisab. Kui klassil on ainult syndmused, ei ole midagi punast
@@ -443,7 +553,8 @@ async function genereeri(votmed, kuupaev) {
       `  ${klassid.length} klassi, ${opetajad.length} õpetajat, ${ruumid.length} ruumi, ` +
       `${R.DB.cards.length} kaarti\n` +
       `  ${muudetud} klassi tänaste muudatustega (${kuupaev}), ` +
-      `${yldsyndmused.length} kooliülest sündmust\n` +
+      `${yldsyndmused.length} kooliülest sündmust, ` +
+      `${tulevased.length} tulevast sündmust ${ETTEVAATE_PAEVI} päeva sees\n` +
       `  -> ${kool.valjund}/`
     );
   }

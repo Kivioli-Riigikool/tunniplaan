@@ -284,6 +284,29 @@ asendus, ärajäänud tund, aegunud plaan. Sündmus ei ole muudatus, seega on ta
 (`.subst-box-event`). Kui klassil on samal päeval nii sündmus kui asendus, on kast punane,
 sest punast on siis päriselt midagi teatada.
 
+### Ettevaade
+
+Aktusest on kasu ette teades, seega küsitakse sündmusi **14 päeva ette** (`ETTEVAATE_PAEVI`).
+Tulemus on kollane kast "Tulemas" nii õppekoha avalehel kui klassilehtedel, klassil ainult
+teda puudutavad sündmused.
+
+**Asendusi ette ei näidata.** Need muutuvad iga päev, seega oleks homne asendusteseis täna
+lihtsalt vale info. Ettevaatest võetakse ainult `event` read.
+
+Hind: EduPage'i liides annab korraga ühe päeva, seega on see **üks POST päeva ja õppekoha
+kohta**. 14 päeva sees on kuni 10 tööpäeva, nädalavahetusi ei küsita, seega 20 lisapäringut
+jooksu kohta. Päringud käivad neljakaupa (`ETTEVAATE_KORRAGA`), kogu genereerimine võtab
+mõõdetuna 2,4 s. Kui see kunagi liiga koormavaks osutub, on `ETTEVAATE_PAEVI` vähendamine
+ainus vajalik muudatus.
+
+Ühe päeva ebaõnnestumine ei võta teisi kaasa: viga püütakse päeva kaupa, puuduv päev jääb
+lihtsalt nimekirjast välja ja konsooli tuleb hoiatus. Ettevaade käib ka nädalavahetusel,
+sest pühapäeval on järgmise nädala sündmused just see, mida vaadata tahetakse.
+
+Kuulajaskond tuletatakse nii: `Klass(id)` loend, selle puudumisel sektsiooni nimi, ja
+kalendrisektsiooni puhul läheb sündmus kõigile. Sama sündmus tuleb korraga mitmes
+sektsioonis (`4.a` ja `4.a ind plaan`), seega liidetakse read teksti järgi kokku.
+
 
 ---
 
@@ -321,8 +344,6 @@ Praktiline järeldus: praegu sobib see Ingmarile näitamiseks ja uue plaani peal
 
 - Asendused ainult klassilehtedel. Õpetaja ja ruumi vaadete jaoks on vaja `mode=teachers` ja `mode=classrooms` päringuid. Parser ise töötab.
 - Genereeritakse ühe päeva seis. Otsustamata, kas näidata ka homset või kogu nädalat.
-- Sündmusi näeb ainult sündmuse enda päeval. Aktusest on kasu ette teades, seega tasuks
-  vaadata 7–14 päeva ette. See on üks POST päeva ja kooli kohta, muud loogikat juures ei ole.
 - Paarid tuletatakse mehaaniliselt, mitte `durationperiods` järgi. See tähendab, et topelttunni silti näeb ka klass, kellel seal topelttundi ei ole.
 - Avaldatakse iga 5 min tagant uuesti, ka siis kui midagi ei muutunud. Muutuse tuvastamist ei ole.
   Pagesi 10 ehituse tunnis piir siia ei puutu – see kehtib ainult Pagesi enda ehitusele, mitte oma
